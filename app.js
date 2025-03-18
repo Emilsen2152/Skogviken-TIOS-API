@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const express = require('express');
 const cors = require('cors');
 const trains = require('./utils/train');
-const { hourTimer, fiveMinutesTimer, locations, updateLocations } = require('./timers');
+const { hourTimer, fiveMinutesTimer, locationsArrivals, locationsDepartures, updateLocations } = require('./timers');
 
 const app = express();
 app.use(express.json());
@@ -182,20 +182,32 @@ app.delete('/trains/:trainNumber', async (request, response) => {
     };
 });
 
-app.get('/locations/:stationCode', (request, response) => {
+app.get('/locations/:stationCode/arrivals', (request, response) => {
     const { stationCode } = request.params;
     
     if (!stationCode) {
         return response.status(400).send('Missing stationCode query parameter');
     }
-
-    console.log(locations);
     
-    if (!locations[stationCode]) {
+    if (!locationsArrivals[stationCode]) {
         return response.status(404).send('Station not found or no trains going through this station');
     }
     
-    response.json(locations[stationCode]);
+    response.json(locationsArrivals[stationCode]);
+});
+
+app.get('/locations/:stationCode/departures', (request, response) => {
+    const { stationCode } = request.params;
+    
+    if (!stationCode) {
+        return response.status(400).send('Missing stationCode query parameter');
+    }
+    
+    if (!locationsDepartures[stationCode]) {
+        return response.status(404).send('Station not found or no trains going through this station');
+    }
+    
+    response.json(locationsDepartures[stationCode]);
 });
 
 // Force update locations method

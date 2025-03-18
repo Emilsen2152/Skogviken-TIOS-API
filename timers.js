@@ -3,7 +3,8 @@ const trains = require('./utils/train');
 
 console.log('Timers are running...');
 
-const locations = {}
+const locationsArrivals = {};
+const locationsDepartures = {};
 
 // New day
 const hourTimer = new CronJob('0 0 0 * * *', async () => {
@@ -42,32 +43,49 @@ const hourTimer = new CronJob('0 0 0 * * *', async () => {
 async function updateLocations() {
     const allTrains = await trains.find({});
 
-    const newLocations = {};
+    const newLocationsArrivals = {};
+    const newLocationsDepartures = {};
     
     allTrains.forEach(train => {
         train.currentRoute.forEach(location => {
-            if (!newLocations[location.code]) {
-                newLocations[location.code] = {}; // Fix: Initialize station code if it doesn’t exist
+            if (!newLocationsArrivals[location.code]) {
+                newLocationsArrivals[location.code] = {}; // Fix: Initialize station code if it doesn’t exist
             }
-            newLocations[location.code][train.trainNumber] = { 
+            if (!newLocationsDepartures[location.code]) {
+                newLocationsDepartures[location.code] = {}; // Fix: Initialize station code if it doesn’t exist
+            }
+            newLocationsArrivals[location.code][train.trainNumber] = { 
                 trainNumber: train.trainNumber, 
                 hasPassed: location.passed, 
                 arrival: location.arrival, 
                 departure: location.departure 
             };
+
+            newLocationsDepartures[location.code][train.trainNumber] = {
+                trainNumber: train.trainNumber,
+                hasPassed: location.passed,
+                arrival: location.arrival,
+                departure: location.departure
+            };
         });
     });
             
     // Sort the trains at each location by arrival time
-    Object.keys(newLocations).forEach(location => {
-        newLocations[location] = Object.values(newLocations[location]).sort((a, b) => a.arrival - b.arrival);
+    Object.keys(newLocationsArrivals).forEach(location => {
+        newLocationsArrivals[location] = Object.values(newLocationsArrivals[location]).sort((a, b) => a.arrival - b.arrival);
     });
 
-    console.log(newLocations); // Fix: Log the correct variable
+    // Sort the trains at each location by departure time
+    Object.keys(newLocationsDepartures).forEach(location => {
+        newLocationsDepartures[location] = Object.values(newLocationsDepartures[location]).sort((a, b) => a.departure - b.departure);
+    });
 
     // Update locations with new data
-    Object.keys(locations).forEach(key => delete locations[key]); // Clear existing data
-    Object.assign(locations, newLocations); // Copy new data into existing object
+    Object.keys(locationsArrivals).forEach(key => delete locationsArrivals[key]); // Clear existing data
+    Object.assign(locationsArrivals, newLocationsArrivals); // Copy new data into existing object
+
+    Object.keys(locationsDepartures).forEach(key => delete locationsDepartures[key]); // Clear existing data
+    Object.assign(locationsDepartures, newLocationsDepartures); // Copy new data into existing object
 }
 
 // Every 5 minutes
@@ -75,5 +93,5 @@ const fiveMinutesTimer = new CronJob('0 */5 * * * *', updateLocations, null, fal
 updateLocations();
 
 
-module.exports = { hourTimer, fiveMinutesTimer, locations, updateLocations };
+module.exports = { hourTimer, fiveMinutesTimer, locationsDepartures, locationsDepartures, updateLocations };
 
