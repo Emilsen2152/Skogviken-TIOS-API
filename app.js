@@ -26,7 +26,6 @@ app.listen(PORT, '0.0.0.0', () => {
 });
 
 app.get('/status', (request, response) => {
-    console.log('GET Request received');
     const status = {
         status: 'Running'
     };
@@ -35,7 +34,6 @@ app.get('/status', (request, response) => {
 });
 
 app.post('/trains', async (request, response) => {
-    console.log('POST Request received');
     const { key } = request.headers;
     const { trainNumber, operator, defaultRoute, extraTrain } = request.body;
 
@@ -115,7 +113,6 @@ app.post('/trains', async (request, response) => {
 });
 
 app.get('/trains/:trainNumber', async (request, response) => {
-    console.log('GET Request received');
     const { trainNumber } = request.params;
 
     /*if (!trainNumber) {
@@ -137,7 +134,6 @@ app.get('/trains/:trainNumber', async (request, response) => {
 });
 
 app.patch('/trains/:trainNumber', async (request, response) => {
-    console.log('PATCH Request received');
     const { trainNumber } = request.params;
     const updates = request.body;
 
@@ -165,7 +161,6 @@ app.patch('/trains/:trainNumber', async (request, response) => {
 });
 
 app.delete('/trains/:trainNumber', async (request, response) => {
-    console.log('DELETE Request received');
     const { trainNumber } = request.params;
     const { key } = request.headers;
 
@@ -188,7 +183,6 @@ app.delete('/trains/:trainNumber', async (request, response) => {
 });
 
 app.get('/locations/:stationCode', (request, response) => {
-    console.log('GET Request received');
     const { stationCode } = request.params;
     
     if (!stationCode) {
@@ -206,7 +200,6 @@ app.get('/locations/:stationCode', (request, response) => {
 
 // Force update locations method
 app.post('/locations', async (request, response) => {
-    console.log('POST Request received');
     const { key } = request.headers;
 
     if (key !== process.env.API_KEY) {
