@@ -1,11 +1,13 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const express = require('express');
+const cors = require('cors');
 const trains = require('./utils/train');
 const { hourTimer, fiveMinutesTimer, locations, updateLocations } = require('./timers');
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 const PORT = process.env.PORT || 80;
 
