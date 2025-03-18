@@ -93,5 +93,5 @@ const fiveMinutesTimer = new CronJob('0 */5 * * * *', updateLocations, null, fal
 updateLocations();
 
 
-module.exports = { hourTimer, fiveMinutesTimer, locationsDepartures, locationsDepartures, updateLocations };
+module.exports = { hourTimer, fiveMinutesTimer, locationsArrivals, locationsDepartures, updateLocations };
 
