@@ -77,10 +77,10 @@ app.post('/trains', async (request, response) => {
             const { name, code, type, track, arrival, departure, stopType, passed, cancelledAtStation } = station;
 
             const arrivalTime = new Date();
-            arrivalTime.setHours(arrival.hours, arrival.minutes, 0, 0);
+            arrivalTime.setUTCHours(arrival.hours, arrival.minutes, 0, 0);
 
             const departureTime = new Date();
-            departureTime.setHours(departure.hours, departure.minutes, 0, 0);
+            departureTime.setUTCHours(departure.hours, departure.minutes, 0, 0);
 
             return {
                 name,
