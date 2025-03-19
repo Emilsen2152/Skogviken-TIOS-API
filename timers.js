@@ -7,7 +7,7 @@ const locationsArrivals = {};
 const locationsDepartures = {};
 
 // New day
-const hourTimer = new CronJob('0 0 0 * * *', async () => {
+const dayTimer = new CronJob('0 0 0 * * *', async () => {
     const allTrains = await trains.find({});
     allTrains.forEach(train => {
         if (train.extraTrain) {
@@ -93,5 +93,5 @@ const fiveMinutesTimer = new CronJob('0 */5 * * * *', updateLocations, null, fal
 updateLocations();
 
 
-module.exports = { hourTimer, fiveMinutesTimer, locationsArrivals, locationsDepartures, updateLocations };
+module.exports = { dayTimer, fiveMinutesTimer, locationsArrivals, locationsDepartures, updateLocations };
 

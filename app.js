@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const express = require('express');
 const cors = require('cors');
 const trains = require('./utils/train');
-const { hourTimer, fiveMinutesTimer, locationsArrivals, locationsDepartures, updateLocations } = require('./timers');
+const { dayTimer, fiveMinutesTimer, locationsArrivals, locationsDepartures, updateLocations } = require('./timers');
 
 const app = express();
 app.use(express.json());
@@ -226,5 +226,5 @@ app.post('/locations', async (request, response) => {
     }
 });
 
-hourTimer.start();
+dayTimer.start();
 fiveMinutesTimer.start();
