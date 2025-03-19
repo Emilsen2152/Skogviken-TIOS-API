@@ -160,6 +160,62 @@ app.patch('/trains/:trainNumber', async (request, response) => {
     };
 });
 
+app.patch('/trains/:trainNumber/delay', async (request, response) => {
+    const { trainNumber } = request.params;
+    const { delay } = request.body;
+
+    const { key } = request.headers;
+    if (key !== process.env.API_KEY) {
+        return response.status(401).send('Unauthorized');
+    }
+
+    try {
+        const train = await trains.findOne({ trainNumber });
+
+        if (!train) {
+            return response.status(404).send('Train not found');
+        }
+
+        let delayLeft = delay;
+
+        train.currentRoute.forEach(location => {
+            if (!location.passed) {
+                if (delayLeft > 0) {
+                    const arrival = new Date(location.arrival);
+                    const departure = new Date(location.departure);
+                    const stopDuration = (departure - arrival) / 60000; // Convert to minutes
+
+                    // Minimum stop duration is 1 minute
+                    if (stopDuration > 1) {
+                        const possibleReduction = stopDuration - 1;
+                        const reduction = Math.min(possibleReduction, delayLeft);
+
+                        arrival.setMinutes(arrival.getMinutes() + delayLeft);
+                        departure.setMinutes(departure.getMinutes() + delayLeft - reduction);
+
+                        location.arrival = arrival;
+                        location.departure = departure;
+
+                        delayLeft -= reduction;
+                    } else {
+                        arrival.setMinutes(arrival.getMinutes() + delayLeft);
+                        departure.setMinutes(departure.getMinutes() + delayLeft);
+
+                        location.arrival = arrival;
+                        location.departure = departure;
+                    }
+                }
+            }
+        });
+
+        await train.save();
+        response.status(200).json(train);
+
+    } catch (error) {
+        response.status(500).json({ error: error.message });
+    }
+});
+
 app.delete('/trains/:trainNumber', async (request, response) => {
     const { trainNumber } = request.params;
     const { key } = request.headers;
