@@ -35,7 +35,7 @@ app.get('/status', (request, response) => {
 
 app.post('/trains', async (request, response) => {
     const { key } = request.headers;
-    const { trainNumber, operator, defaultRoute, extraTrain } = request.body;
+    const { trainNumber, operator, defaultRoute, extraTrain, routeNumber } = request.body;
 
     if (key !== process.env.API_KEY) {
         return response.status(401).send('Unauthorized');
@@ -103,6 +103,10 @@ app.post('/trains', async (request, response) => {
             defaultRoute,
             currentRoute
         });
+
+        if (routeNumber) {
+            newTrain.routeNumber = routeNumber;
+        }
 
         await newTrain.save();
         response.status(201).json(newTrain);

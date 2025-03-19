@@ -14,6 +14,10 @@ const trainSchema = new Schema({
         type: Boolean,
         required: true
     },
+    routeNumber: {
+        type: String,
+        required: false
+    },
     defaultRoute: {
         type: Array,
         required: true
