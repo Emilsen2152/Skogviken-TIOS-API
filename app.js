@@ -168,6 +168,10 @@ app.patch('/trains/:trainNumber/delay', async (request, response) => {
     const { trainNumber } = request.params;
     const { delay, editStopTimes } = request.body;
 
+    if (!trainNumber || delay === undefined || editStopTimes === undefined) {
+        return response.status(400).send('Missing required fields');
+    };
+
     const { key } = request.headers;
     if (key !== process.env.API_KEY) {
         return response.status(401).send('Unauthorized');
@@ -183,7 +187,7 @@ app.patch('/trains/:trainNumber/delay', async (request, response) => {
         let delayLeft = delay;
 
         train.currentRoute.forEach(location => {
-            if (!location.passed) {
+            if (!location.passed && !location.cancelledAtStation) {
                 if (delayLeft > 0 && editStopTimes) {
                     const arrival = new Date(location.arrival);
                     const departure = new Date(location.departure);
