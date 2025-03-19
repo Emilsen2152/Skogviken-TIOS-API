@@ -166,7 +166,7 @@ app.patch('/trains/:trainNumber', async (request, response) => {
 
 app.patch('/trains/:trainNumber/delay', async (request, response) => {
     const { trainNumber } = request.params;
-    const { delay } = request.body;
+    const { delay, editStopTimes } = request.body;
 
     const { key } = request.headers;
     if (key !== process.env.API_KEY) {
@@ -184,7 +184,7 @@ app.patch('/trains/:trainNumber/delay', async (request, response) => {
 
         train.currentRoute.forEach(location => {
             if (!location.passed) {
-                if (delayLeft > 0) {
+                if (delayLeft > 0 && editStopTimes) {
                     const arrival = new Date(location.arrival);
                     const departure = new Date(location.departure);
                     const stopDuration = (departure - arrival) / 60000; // Convert to minutes
