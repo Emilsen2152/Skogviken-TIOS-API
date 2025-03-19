@@ -208,6 +208,8 @@ app.patch('/trains/:trainNumber/delay', async (request, response) => {
             }
         });
 
+        train.markModified('currentRoute');
+
         await train.save();
         response.status(200).json(train);
 
