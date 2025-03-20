@@ -72,23 +72,29 @@ app.post('/trains', async (request, response) => {
             return response.status(409).send('Train number already exists');
         }
 
-        // Build currentRoute with properly formatted times
+        // Get the correct local date in Norway
+        const now = new Date();
+        const localDate = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Oslo" }));
+
+        // Build currentRoute with properly formatted times (converted to UTC)
         const currentRoute = defaultRoute.map(station => {
             const { name, code, type, track, arrival, departure, stopType, passed, cancelledAtStation } = station;
 
-            const arrivalTime = new Date();
-            arrivalTime.setUTCHours(arrival.hours, arrival.minutes, 0, 0);
+            // Create the arrival and departure times in local Norwegian time
+            const arrivalTime = new Date(localDate);
+            arrivalTime.setHours(arrival.hours, arrival.minutes, 0, 0);
 
-            const departureTime = new Date();
-            departureTime.setUTCHours(departure.hours, departure.minutes, 0, 0);
+            const departureTime = new Date(localDate);
+            departureTime.setHours(departure.hours, departure.minutes, 0, 0);
 
+            // Convert to UTC before storing
             return {
                 name,
                 code,
                 type,
                 track,
-                arrival: arrivalTime,
-                departure: departureTime,
+                arrival: new Date(arrivalTime.getTime() - (arrivalTime.getTimezoneOffset() * 60000)),
+                departure: new Date(departureTime.getTime() - (departureTime.getTimezoneOffset() * 60000)),
                 stopType,
                 passed,
                 cancelledAtStation
