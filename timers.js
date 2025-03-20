@@ -6,7 +6,7 @@ console.log('Timers are running...');
 const locationsArrivals = {};
 const locationsDepartures = {};
 
-// Day timer
+// New day
 const dayTimer = new CronJob('0 0 0 * * *', async () => {
     const allTrains = await trains.find({});
     for (const train of allTrains) {
@@ -20,14 +20,14 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
             train.currentRoute = train.defaultRoute.map(station => {
                 const { name, code, type, track, arrival, departure, stopType, passed, cancelledAtStation } = station;
 
-                // Create the arrival and departure times in Norwegian local time
+                // Create the arrival and departure times in local Norwegian time
                 const arrivalTime = new Date(localDate);
                 arrivalTime.setHours(arrival.hours, arrival.minutes, 0, 0);
 
                 const departureTime = new Date(localDate);
                 departureTime.setHours(departure.hours, departure.minutes, 0, 0);
 
-                // Convert Norwegian time to UTC before storing
+                // Convert to UTC before storing
                 const arrivalUTC = new Date(arrivalTime.getTime() - (arrivalTime.getTimezoneOffset() * 60000));
                 const departureUTC = new Date(departureTime.getTime() - (departureTime.getTimezoneOffset() * 60000));
 
@@ -49,7 +49,6 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
         }
     }
 }, null, false, 'Europe/Oslo');
-
 
 async function updateLocations() {
     const allTrains = await trains.find({});
