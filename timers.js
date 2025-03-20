@@ -6,7 +6,7 @@ console.log('Timers are running...');
 const locationsArrivals = {};
 const locationsDepartures = {};
 
-// New day
+// Day timer
 const dayTimer = new CronJob('0 0 0 * * *', async () => {
     const allTrains = await trains.find({});
     for (const train of allTrains) {
@@ -20,21 +20,24 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
             train.currentRoute = train.defaultRoute.map(station => {
                 const { name, code, type, track, arrival, departure, stopType, passed, cancelledAtStation } = station;
 
-                // Create the arrival and departure times in local Norwegian time
+                // Create the arrival and departure times in Norwegian local time
                 const arrivalTime = new Date(localDate);
                 arrivalTime.setHours(arrival.hours, arrival.minutes, 0, 0);
 
                 const departureTime = new Date(localDate);
                 departureTime.setHours(departure.hours, departure.minutes, 0, 0);
 
-                // Convert to UTC before storing
+                // Convert Norwegian time to UTC before storing
+                const arrivalUTC = new Date(arrivalTime.getTime() - (arrivalTime.getTimezoneOffset() * 60000));
+                const departureUTC = new Date(departureTime.getTime() - (departureTime.getTimezoneOffset() * 60000));
+
                 return {
                     name,
                     code,
                     type,
                     track,
-                    arrival: new Date(arrivalTime.getTime() - (arrivalTime.getTimezoneOffset() * 60000)),
-                    departure: new Date(departureTime.getTime() - (departureTime.getTimezoneOffset() * 60000)),
+                    arrival: arrivalUTC,
+                    departure: departureUTC,
                     stopType,
                     passed,
                     cancelledAtStation
@@ -46,6 +49,7 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
         }
     }
 }, null, false, 'Europe/Oslo');
+
 
 async function updateLocations() {
     const allTrains = await trains.find({});

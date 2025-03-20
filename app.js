@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 80;
 
     } catch (error) {
         console.log(`Mongo DB Error: ${error}`);
-    }      
+    }
 })();
 
 app.listen(PORT, '0.0.0.0', () => {
@@ -76,18 +76,18 @@ app.post('/trains', async (request, response) => {
         const now = new Date();
         const localDate = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Oslo" }));
 
-        // Build currentRoute with properly formatted times (converted to UTC)
+        // Build currentRoute with properly formatted times
         const currentRoute = defaultRoute.map(station => {
             const { name, code, type, track, arrival, departure, stopType, passed, cancelledAtStation } = station;
 
-            // Create the arrival and departure times in local Norwegian time
+            // Create the arrival and departure times in Norwegian local time
             const arrivalTime = new Date(localDate);
             arrivalTime.setHours(arrival.hours, arrival.minutes, 0, 0);
 
             const departureTime = new Date(localDate);
             departureTime.setHours(departure.hours, departure.minutes, 0, 0);
 
-            // Convert to UTC before storing
+            // Convert local Norwegian time to UTC before storing
             return {
                 name,
                 code,
@@ -158,7 +158,7 @@ app.patch('/trains/:trainNumber', async (request, response) => {
             { $set: updates }, // Apply only the changes
             { new: true, runValidators: true } // Return updated train and validate changes
         ).exec();
-        
+
         if (!updatedTrain) {
             return response.status(404).send('Train not found');
         };
@@ -256,29 +256,29 @@ app.delete('/trains/:trainNumber', async (request, response) => {
 
 app.get('/locations/:stationCode/arrivals', (request, response) => {
     const { stationCode } = request.params;
-    
+
     if (!stationCode) {
         return response.status(400).send('Missing stationCode query parameter');
     }
-    
+
     if (!locationsArrivals[stationCode]) {
         return response.status(404).send('Station not found or no trains going through this station');
     }
-    
+
     response.json(locationsArrivals[stationCode]);
 });
 
 app.get('/locations/:stationCode/departures', (request, response) => {
     const { stationCode } = request.params;
-    
+
     if (!stationCode) {
         return response.status(400).send('Missing stationCode query parameter');
     }
-    
+
     if (!locationsDepartures[stationCode]) {
         return response.status(404).send('Station not found or no trains going through this station');
     }
-    
+
     response.json(locationsDepartures[stationCode]);
 });
 
