@@ -72,7 +72,7 @@ app.post('/trains', async (request, response) => {
             return response.status(409).send('Train number already exists');
         }
 
-        // Get the correct local date in Norway (Oslo time)
+        // Get the correct local date in Norway
         const now = new Date();
         const localDate = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Oslo" }));
 
@@ -80,16 +80,16 @@ app.post('/trains', async (request, response) => {
         const currentRoute = defaultRoute.map(station => {
             const { name, code, type, track, arrival, departure, stopType, passed, cancelledAtStation } = station;
 
-            // Create the arrival and departure times in Norwegian local time (Oslo time)
+            // Create the arrival and departure times in local Norwegian time
             const arrivalTime = new Date(localDate);
             arrivalTime.setHours(arrival.hours, arrival.minutes, 0, 0);
 
             const departureTime = new Date(localDate);
             departureTime.setHours(departure.hours, departure.minutes, 0, 0);
 
-            // Convert local Norwegian time to UTC before storing
-            const arrivalUTC = new Date(arrivalTime.getTime() - (arrivalTime.getTimezoneOffset() * 60000));
-            const departureUTC = new Date(departureTime.getTime() - (departureTime.getTimezoneOffset() * 60000));
+            // Convert arrival and departure to UTC
+            const arrivalUTC = new Date(arrivalTime.toISOString()); // Convert directly to ISO string to ensure UTC
+            const departureUTC = new Date(departureTime.toISOString()); // Same for departure
 
             return {
                 name,
@@ -124,7 +124,6 @@ app.post('/trains', async (request, response) => {
         response.status(500).json({ error: error.message });
     }
 });
-
 
 app.get('/trains/:trainNumber', async (request, response) => {
     const { trainNumber } = request.params;

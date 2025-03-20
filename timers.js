@@ -27,9 +27,9 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
                 const departureTime = new Date(localDate);
                 departureTime.setHours(departure.hours, departure.minutes, 0, 0);
 
-                // Convert to UTC before storing
-                const arrivalUTC = new Date(arrivalTime.getTime() - (arrivalTime.getTimezoneOffset() * 60000));
-                const departureUTC = new Date(departureTime.getTime() - (departureTime.getTimezoneOffset() * 60000));
+                // Convert arrival and departure to UTC
+                const arrivalUTC = new Date(arrivalTime.toISOString()); // Convert directly to ISO string to ensure UTC
+                const departureUTC = new Date(departureTime.toISOString()); // Same for departure
 
                 return {
                     name,
