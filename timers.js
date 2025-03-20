@@ -13,15 +13,18 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
         if (train.extraTrain) {
             await train.deleteOne();
         } else {
+            const today = new Date(); // Get the correct local date
+            const localDate = new Date(today.toLocaleString("en-US", { timeZone: "Europe/Oslo" }));
+
             train.currentRoute = train.defaultRoute.map(station => {
                 const { name, code, type, track, arrival, departure, stopType, passed, cancelledAtStation } = station;
-    
-                const arrivalTime = new Date();
-                arrivalTime.setUTCHours(arrival.hours, arrival.minutes, 0, 0);
-    
-                const departureTime = new Date();
-                departureTime.setUTCHours(departure.hours, departure.minutes, 0, 0);
-    
+
+                const arrivalTime = new Date(localDate);
+                arrivalTime.setHours(arrival.hours, arrival.minutes, 0, 0); // Use local time
+
+                const departureTime = new Date(localDate);
+                departureTime.setHours(departure.hours, departure.minutes, 0, 0); // Use local time
+
                 return {
                     name,
                     code,
@@ -34,7 +37,7 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
                     cancelledAtStation
                 };
             });
-    
+
             train.currentFormation = {};
             await train.save();
         }
