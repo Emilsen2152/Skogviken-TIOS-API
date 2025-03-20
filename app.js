@@ -69,19 +69,38 @@ app.post('/trains', async (request, response) => {
             return response.status(409).send('Train number already exists');
         }
 
-        // Get the current local date in Norway using "sv-SE" (ISO-friendly format: YYYY-MM-DD HH:mm:ss)
-        const nowOsloStr = new Date().toLocaleString("sv-SE", { timeZone: "Europe/Oslo" });
-        // Split the string to extract the date part (e.g., "2025-03-20")
-        const [datePart] = nowOsloStr.split(" ");
-        const [year, month, day] = datePart.split("-").map(Number);
+        // Use Intl.DateTimeFormat to reliably extract the current Oslo date
+        const formatter = new Intl.DateTimeFormat("en-US", {
+            timeZone: "Europe/Oslo",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit"
+        });
+        const parts = formatter.formatToParts(new Date());
+        let year, month, day;
+        parts.forEach(part => {
+            if (part.type === "year") year = part.value;
+            else if (part.type === "month") month = part.value;
+            else if (part.type === "day") day = part.value;
+        });
 
-        // Build currentRoute with properly formatted times converted to UTC
+        // Build currentRoute using the extracted local date for Oslo
         const currentRoute = defaultRoute.map(station => {
-            const { name, code, type, track, arrival, departure, stopType, passed, cancelledAtStation } = station;
+            const {
+                name,
+                code,
+                type,
+                track,
+                arrival,
+                departure,
+                stopType,
+                passed,
+                cancelledAtStation
+            } = station;
 
-            // Create UTC dates based on the Norwegian local date and provided hours/minutes
-            const arrivalUTC = new Date(Date.UTC(year, month - 1, day, arrival.hours, arrival.minutes, 0, 0));
-            const departureUTC = new Date(Date.UTC(year, month - 1, day, departure.hours, departure.minutes, 0, 0));
+            // Create UTC dates from the local Oslo date and provided hours/minutes
+            const arrivalUTC = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), arrival.hours, arrival.minutes, 0));
+            const departureUTC = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), departure.hours, departure.minutes, 0));
 
             return {
                 name,

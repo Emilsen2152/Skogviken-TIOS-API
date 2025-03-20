@@ -9,21 +9,42 @@ const locationsDepartures = {};
 // New day timer
 const dayTimer = new CronJob('0 0 0 * * *', async () => {
     const allTrains = await trains.find({});
+    
+    // Use Intl.DateTimeFormat to reliably extract the current Oslo date
+    const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Europe/Oslo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    });
+    const parts = formatter.formatToParts(new Date());
+    let year, month, day;
+    parts.forEach(part => {
+        if (part.type === "year") year = part.value;
+        else if (part.type === "month") month = part.value;
+        else if (part.type === "day") day = part.value;
+    });
+    
     for (const train of allTrains) {
         if (train.extraTrain) {
             await train.deleteOne();
         } else {
-            // Get the current local date in Norway using "sv-SE"
-            const nowOsloStr = new Date().toLocaleString("sv-SE", { timeZone: "Europe/Oslo" });
-            const [datePart] = nowOsloStr.split(" ");
-            const [year, month, day] = datePart.split("-").map(Number);
-
             train.currentRoute = train.defaultRoute.map(station => {
-                const { name, code, type, track, arrival, departure, stopType, passed, cancelledAtStation } = station;
+                const {
+                    name,
+                    code,
+                    type,
+                    track,
+                    arrival,
+                    departure,
+                    stopType,
+                    passed,
+                    cancelledAtStation
+                } = station;
 
-                // Build UTC dates for arrival and departure using the Norwegian local date
-                const arrivalUTC = new Date(Date.UTC(year, month - 1, day, arrival.hours, arrival.minutes, 0, 0));
-                const departureUTC = new Date(Date.UTC(year, month - 1, day, departure.hours, departure.minutes, 0, 0));
+                // Build UTC dates for arrival and departure using the Oslo local date
+                const arrivalUTC = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), arrival.hours, arrival.minutes, 0));
+                const departureUTC = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), departure.hours, departure.minutes, 0));
 
                 return {
                     name,
@@ -43,6 +64,7 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
         }
     }
 }, null, false, 'Europe/Oslo');
+
 
 async function updateLocations() {
     const allTrains = await trains.find({});
