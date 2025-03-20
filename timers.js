@@ -42,9 +42,16 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
                     cancelledAtStation
                 } = station;
 
-                // Build UTC dates for arrival and departure using the Oslo local date
-                const arrivalUTC = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), arrival.hours, arrival.minutes, 0));
-                const departureUTC = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), departure.hours, departure.minutes, 0));
+                // Convert Oslo time (Europe/Oslo) to UTC by using Date object
+                const arrivalLocal = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), arrival.hours, arrival.minutes, 0));
+                const departureLocal = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), departure.hours, departure.minutes, 0));
+
+                // Calculate UTC offset (in minutes) for Oslo's timezone
+                const osloOffset = arrivalLocal.getTimezoneOffset(); 
+
+                // Apply the offset to convert to UTC
+                const arrivalUTC = new Date(arrivalLocal.getTime() + osloOffset * 60000);
+                const departureUTC = new Date(departureLocal.getTime() + osloOffset * 60000);
 
                 return {
                     name,
