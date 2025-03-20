@@ -6,30 +6,24 @@ console.log('Timers are running...');
 const locationsArrivals = {};
 const locationsDepartures = {};
 
-// New day
+// New day timer
 const dayTimer = new CronJob('0 0 0 * * *', async () => {
     const allTrains = await trains.find({});
     for (const train of allTrains) {
         if (train.extraTrain) {
             await train.deleteOne();
         } else {
-            // Get the current date in Norway
-            const now = new Date();
-            const localDate = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Oslo" }));
+            // Get the current local date in Norway using "sv-SE"
+            const nowOsloStr = new Date().toLocaleString("sv-SE", { timeZone: "Europe/Oslo" });
+            const [datePart] = nowOsloStr.split(" ");
+            const [year, month, day] = datePart.split("-").map(Number);
 
             train.currentRoute = train.defaultRoute.map(station => {
                 const { name, code, type, track, arrival, departure, stopType, passed, cancelledAtStation } = station;
 
-                // Create the arrival and departure times in local Norwegian time
-                const arrivalTime = new Date(localDate);
-                arrivalTime.setHours(arrival.hours, arrival.minutes, 0, 0);
-
-                const departureTime = new Date(localDate);
-                departureTime.setHours(departure.hours, departure.minutes, 0, 0);
-
-                // Convert arrival and departure to UTC
-                const arrivalUTC = new Date(arrivalTime.toISOString()); // Convert directly to ISO string to ensure UTC
-                const departureUTC = new Date(departureTime.toISOString()); // Same for departure
+                // Build UTC dates for arrival and departure using the Norwegian local date
+                const arrivalUTC = new Date(Date.UTC(year, month - 1, day, arrival.hours, arrival.minutes, 0, 0));
+                const departureUTC = new Date(Date.UTC(year, month - 1, day, departure.hours, departure.minutes, 0, 0));
 
                 return {
                     name,

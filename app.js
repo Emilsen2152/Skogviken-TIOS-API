@@ -54,12 +54,9 @@ app.post('/trains', async (request, response) => {
         // Validate each station in defaultRoute
         for (const station of defaultRoute) {
             const { name, code, type, track, arrival, departure, stopType, passed, cancelledAtStation } = station;
-
             if (!name || !code || !type || !track || !arrival || !departure || !stopType || passed === undefined || cancelledAtStation === undefined) {
                 return response.status(400).send('Missing required fields in defaultRoute');
             }
-
-            // Ensure arrival and departure have valid time formats (hours and minutes)
             if (typeof arrival.hours !== 'number' || typeof arrival.minutes !== 'number' ||
                 typeof departure.hours !== 'number' || typeof departure.minutes !== 'number') {
                 return response.status(400).send('Invalid arrival or departure time format');
@@ -72,24 +69,19 @@ app.post('/trains', async (request, response) => {
             return response.status(409).send('Train number already exists');
         }
 
-        // Get the correct local date in Norway
-        const now = new Date();
-        const localDate = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Oslo" }));
+        // Get the current local date in Norway using "sv-SE" (ISO-friendly format: YYYY-MM-DD HH:mm:ss)
+        const nowOsloStr = new Date().toLocaleString("sv-SE", { timeZone: "Europe/Oslo" });
+        // Split the string to extract the date part (e.g., "2025-03-20")
+        const [datePart] = nowOsloStr.split(" ");
+        const [year, month, day] = datePart.split("-").map(Number);
 
-        // Build currentRoute with properly formatted times
+        // Build currentRoute with properly formatted times converted to UTC
         const currentRoute = defaultRoute.map(station => {
             const { name, code, type, track, arrival, departure, stopType, passed, cancelledAtStation } = station;
 
-            // Create the arrival and departure times in local Norwegian time
-            const arrivalTime = new Date(localDate);
-            arrivalTime.setHours(arrival.hours, arrival.minutes, 0, 0);
-
-            const departureTime = new Date(localDate);
-            departureTime.setHours(departure.hours, departure.minutes, 0, 0);
-
-            // Convert arrival and departure to UTC
-            const arrivalUTC = new Date(arrivalTime.toISOString()); // Convert directly to ISO string to ensure UTC
-            const departureUTC = new Date(departureTime.toISOString()); // Same for departure
+            // Create UTC dates based on the Norwegian local date and provided hours/minutes
+            const arrivalUTC = new Date(Date.UTC(year, month - 1, day, arrival.hours, arrival.minutes, 0, 0));
+            const departureUTC = new Date(Date.UTC(year, month - 1, day, departure.hours, departure.minutes, 0, 0));
 
             return {
                 name,
@@ -119,7 +111,6 @@ app.post('/trains', async (request, response) => {
 
         await newTrain.save();
         response.status(201).json(newTrain);
-
     } catch (error) {
         response.status(500).json({ error: error.message });
     }
