@@ -62,7 +62,7 @@ app.post('/trains', async (request, response) => {
             }
         }
 
-        const existingTrain = await trains.findOne({ trainNumber });
+        const existingTrain = await trains.findOne({ trainNumber }).exec();
         if (existingTrain) {
             return response.status(409).send('Train number already exists');
         }
@@ -133,7 +133,7 @@ app.get('/trains/:trainNumber', async (request, response) => {
     }*/
 
     try {
-        const train = await trains.findOne({ trainNumber });
+        const train = await trains.findOne({ trainNumber }).exec();
 
         if (!train) {
             return response.status(404).send('Train not found');
@@ -163,7 +163,7 @@ app.get('/trains', async (request, response) => {
     };
 
     try {
-        const train = await trains.find(query);
+        const train = await trains.find(query).exec();
 
         if (!train) {
             return response.status(404).send('Train not found');
@@ -217,7 +217,7 @@ app.patch('/trains/:trainNumber/delay', async (request, response) => {
     }
 
     try {
-        const train = await trains.findOne({ trainNumber });
+        const train = await trains.findOne({ trainNumber }).exec();
 
         if (!train) {
             return response.status(404).send('Train not found');
@@ -274,7 +274,7 @@ app.delete('/trains/:trainNumber', async (request, response) => {
     };
 
     try {
-        const deletedTrain = await trains.findOneAndDelete({ trainNumber });
+        const deletedTrain = await trains.findOneAndDelete({ trainNumber }).exec();
 
         if (!deletedTrain) {
             return response.status(404).send('Train not found');
