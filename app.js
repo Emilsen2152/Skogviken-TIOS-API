@@ -146,7 +146,7 @@ app.get('/trains/:trainNumber', async (request, response) => {
     }
 });
 
-app.get('/trains/customQuery', async (request, response) => {
+app.get('/trains', async (request, response) => {
     const { key } = request.headers;
     const { query } = request.body;
 
