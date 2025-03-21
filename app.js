@@ -2,6 +2,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const express = require('express');
 const cors = require('cors');
+const { DateTime } = require('luxon');
 const trains = require('./utils/train');
 const { dayTimer, fiveMinutesTimer, locationsArrivals, locationsDepartures, updateLocations } = require('./timers');
 
@@ -45,13 +46,11 @@ app.post('/trains', async (request, response) => {
         return response.status(400).send('Missing required fields');
     }
 
-    // Ensure defaultRoute is an array
     if (!Array.isArray(defaultRoute)) {
         return response.status(400).send('defaultRoute must be an array');
     }
 
     try {
-        // Validate each station in defaultRoute
         for (const station of defaultRoute) {
             const { name, code, type, track, arrival, departure, stopType, passed, cancelledAtStation } = station;
             if (!name || !code || !type || !track || !arrival || !departure || !stopType || passed === undefined || cancelledAtStation === undefined) {
@@ -63,28 +62,11 @@ app.post('/trains', async (request, response) => {
             }
         }
 
-        // Check if a train with the same number already exists
         const existingTrain = await trains.findOne({ trainNumber });
         if (existingTrain) {
             return response.status(409).send('Train number already exists');
         }
 
-        // Use Intl.DateTimeFormat to reliably extract the current Oslo date
-        const formatter = new Intl.DateTimeFormat("en-US", {
-            timeZone: "Europe/Oslo",
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit"
-        });
-        const parts = formatter.formatToParts(new Date());
-        let year, month, day;
-        parts.forEach(part => {
-            if (part.type === "year") year = part.value;
-            else if (part.type === "month") month = part.value;
-            else if (part.type === "day") day = part.value;
-        });
-
-        // Build currentRoute using the extracted local date for Oslo
         const currentRoute = defaultRoute.map(station => {
             const {
                 name,
@@ -98,16 +80,16 @@ app.post('/trains', async (request, response) => {
                 cancelledAtStation
             } = station;
 
-            // Convert Oslo time (Europe/Oslo) to UTC by using Date object
-            const arrivalLocal = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), arrival.hours, arrival.minutes, 0));
-            const departureLocal = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), departure.hours, departure.minutes, 0));
+            // Convert Oslo time to UTC using Luxon
+            const arrivalUTC = DateTime.fromObject(
+                { hour: arrival.hours, minute: arrival.minutes },
+                { zone: 'Europe/Oslo' }
+            ).toUTC().toJSDate();
 
-            // Calculate UTC offset (in minutes) for Oslo's timezone
-            const osloOffset = arrivalLocal.getTimezoneOffset(); 
-
-            // Apply the offset to convert to UTC
-            const arrivalUTC = new Date(arrivalLocal.getTime() + osloOffset * 60000);
-            const departureUTC = new Date(departureLocal.getTime() + osloOffset * 60000);
+            const departureUTC = DateTime.fromObject(
+                { hour: departure.hours, minute: departure.minutes },
+                { zone: 'Europe/Oslo' }
+            ).toUTC().toJSDate();
 
             return {
                 name,
@@ -122,7 +104,6 @@ app.post('/trains', async (request, response) => {
             };
         });
 
-        // Save the new train
         const newTrain = new trains({
             trainNumber,
             operator,
@@ -141,6 +122,7 @@ app.post('/trains', async (request, response) => {
         response.status(500).json({ error: error.message });
     }
 });
+
 
 
 app.get('/trains/:trainNumber', async (request, response) => {

@@ -1,5 +1,6 @@
 const CronJob = require('cron').CronJob;
 const trains = require('./utils/train');
+const { DateTime } = require('luxon');
 
 console.log('Timers are running...');
 
@@ -9,22 +10,7 @@ const locationsDepartures = {};
 // New day timer
 const dayTimer = new CronJob('0 0 0 * * *', async () => {
     const allTrains = await trains.find({});
-    
-    // Use Intl.DateTimeFormat to reliably extract the current Oslo date
-    const formatter = new Intl.DateTimeFormat("en-US", {
-        timeZone: "Europe/Oslo",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit"
-    });
-    const parts = formatter.formatToParts(new Date());
-    let year, month, day;
-    parts.forEach(part => {
-        if (part.type === "year") year = part.value;
-        else if (part.type === "month") month = part.value;
-        else if (part.type === "day") day = part.value;
-    });
-    
+
     for (const train of allTrains) {
         if (train.extraTrain) {
             await train.deleteOne();
@@ -42,16 +28,16 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
                     cancelledAtStation
                 } = station;
 
-                // Convert Oslo time (Europe/Oslo) to UTC by using Date object
-                const arrivalLocal = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), arrival.hours, arrival.minutes, 0));
-                const departureLocal = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), departure.hours, departure.minutes, 0));
+                // Convert Oslo time to UTC using Luxon
+                const arrivalUTC = DateTime.fromObject(
+                    { hour: arrival.hours, minute: arrival.minutes },
+                    { zone: 'Europe/Oslo' }
+                ).toUTC().toJSDate();
 
-                // Calculate UTC offset (in minutes) for Oslo's timezone
-                const osloOffset = arrivalLocal.getTimezoneOffset(); 
-
-                // Apply the offset to convert to UTC
-                const arrivalUTC = new Date(arrivalLocal.getTime() + osloOffset * 60000);
-                const departureUTC = new Date(departureLocal.getTime() + osloOffset * 60000);
+                const departureUTC = DateTime.fromObject(
+                    { hour: departure.hours, minute: departure.minutes },
+                    { zone: 'Europe/Oslo' }
+                ).toUTC().toJSDate();
 
                 return {
                     name,
@@ -71,7 +57,6 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
         }
     }
 }, null, false, 'Europe/Oslo');
-
 
 async function updateLocations() {
     const allTrains = await trains.find({});
