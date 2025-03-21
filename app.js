@@ -146,6 +146,36 @@ app.get('/trains/:trainNumber', async (request, response) => {
     }
 });
 
+app.get('/trains/customQuery', async (request, response) => {
+    const { key } = request.headers;
+    const { query } = request.body;
+
+    if (key !== process.env.API_KEY) {
+        return response.status(401).send('Unauthorized');
+    };
+
+    if (!query) {
+        return response.status(400).send('Missing query field');
+    };
+
+    if (typeof query !== 'object') {
+        return response.status(400).send('Query must be an object');
+    };
+
+    try {
+        const train = await trains.find(query);
+
+        if (!train) {
+            return response.status(404).send('Train not found');
+        }
+
+        response.json(train);
+
+    } catch (error) {
+        response.status(500).json({ error: error.message });
+    };
+});
+
 app.patch('/trains/:trainNumber', async (request, response) => {
     const { trainNumber } = request.params;
     const updates = request.body;
