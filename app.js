@@ -34,6 +34,35 @@ app.get('/status', (request, response) => {
     response.status(200).json(status);
 });
 
+app.get('/norwayTime', (request, response) => {
+    const { key } = request.headers;
+
+    if (key !== process.env.API_KEY) {
+        return response.status(401).send('Unauthorized');
+    };
+
+    const norwayTime = DateTime.now().setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm:ss');
+    response.json({ norwayTime });
+});
+
+app.get('/norwayTime/:format', (request, response) => {
+    const { format } = request.params;
+    const { key } = request.headers;
+
+    if (key !== process.env.API_KEY) {
+        return response.status(401).send('Unauthorized');
+    };
+
+    // Check if format is valid
+    const validFormats = ['dd.MM.yyyy HH:mm:ss', 'dd.MM.yyyy HH:mm', 'dd.MM.yyyy', 'HH:mm:ss', 'HH:mm'];
+    if (!validFormats.includes(format)) {
+        return response.status(400).send('Invalid format');
+    }
+
+    const norwayTime = DateTime.now().setZone('Europe/Oslo').toFormat(format);
+    response.json({ norwayTime });
+});
+
 app.post('/trains', async (request, response) => {
     const { key } = request.headers;
     const { trainNumber, operator, defaultRoute, extraTrain, routeNumber } = request.body;
@@ -122,8 +151,6 @@ app.post('/trains', async (request, response) => {
         response.status(500).json({ error: error.message });
     }
 });
-
-
 
 app.get('/trains/:trainNumber', async (request, response) => {
     const { trainNumber } = request.params;
