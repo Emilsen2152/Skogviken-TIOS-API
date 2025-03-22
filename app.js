@@ -157,16 +157,16 @@ app.get('/trains/:trainNumber/norwayTimeRoute', async (request, response) => {
         }
 
         const norwayTimeRoute = train.currentRoute.map(location => {
-            // Time format: DD.MM.YYYY HH:mm
-            const arrival = DateTime.fromJSDate(location.arrival).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm');
-            const departure = DateTime.fromJSDate(location.departure).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm');
-
-            // Return the location with arrival and departure in Norway time
-
             return {
-                ...location,
-                arrival,
-                departure
+                name: location.name,
+                code: location.code,
+                type: location.type, // e.g., station, stop, etc.
+                track: location.track,
+                arrival: DateTime.fromJSDate(location.arrival).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm'),
+                departure: DateTime.fromJSDate(location.departure).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm'),
+                stopType: location.stopType,
+                passed: location.passed,
+                cancelledAtStation: location.cancelledAtStation
             };
         });
 
