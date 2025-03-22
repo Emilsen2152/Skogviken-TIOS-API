@@ -146,6 +146,34 @@ app.get('/trains/:trainNumber', async (request, response) => {
     }
 });
 
+app.get('/trains/:trainNumber/norwayTimeRoute', async (request, response) => {
+    const { trainNumber } = request.params;
+
+    try {
+        const train = await trains.findOne({ trainNumber }).exec();
+
+        if (!train) {
+            return response.status(404).send('Train not found');
+        }
+
+        const norwayTimeRoute = train.currentRoute.map(location => {
+            const arrival = DateTime.fromJSDate(location.arrival, { zone: 'utc' }).setZone('Europe/Oslo').toFormat('HH:mm');
+            const departure = DateTime.fromJSDate(location.departure, { zone: 'utc' }).setZone('Europe/Oslo').toFormat('HH:mm');
+
+            return {
+                ...location._doc,
+                arrival: arrival,
+                departure: departure
+            };
+        });
+
+        response.json(norwayTimeRoute);
+
+    } catch (error) {
+        response.status(500).json({ error: error.message });
+    }
+});
+
 app.get('/trains', async (request, response) => {
     const { key } = request.headers;
     const { query } = request.body;
