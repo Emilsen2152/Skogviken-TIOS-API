@@ -1,8 +1,20 @@
 const { DateTime } = require('luxon');
+require('dotenv').config();
 
 // API key validation
-function checkApiKey(req) {
-    return req.headers.key === process.env.API_KEY;
+function checkApiKey(req, res, next) {
+    // Check if the API key is present in the request headers
+    if (!req.headers || !req.headers.key) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    // Validate the API key
+    const apiKey = req.headers.key;
+
+    if (!apiKey || apiKey !== process.env.API_KEY) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    next();
 }
 
 // Validate train route data

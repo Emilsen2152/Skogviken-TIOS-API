@@ -32,20 +32,27 @@ app.get('/status', (req, res) => {
     res.status(200).json({ status: 'Running' });
 });
 
-// Get Norway's time with API key validation
-app.get('/norwayTime', async (req, res) => {
-    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
+// Middleware to check API key
+const checkApiKey = (req, res, next) => {
+    const apiKey = req.headers['x-api-key'];
+    
+    // Replace this with actual API key validation logic
+    if (!apiKey || apiKey !== process.env.API_KEY) {
+        return res.status(401).send('Unauthorized');
+    }
 
+    next();  // Proceed to the next middleware or route handler
+};
+
+// Get Norway's time with API key validation
+app.get('/norwayTime', checkApiKey, async (req, res) => {
     const norwayTime = DateTime.now().setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm:ss');
     res.json({ norwayTime });
 });
 
 // Get Norway's time with custom format
-app.get('/norwayTime/:format', async (req, res) => {
+app.get('/norwayTime/:format', checkApiKey, async (req, res) => {
     const { format } = req.params;
-    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
-
-    // Validate format
     const validFormats = ['dd.MM.yyyy HH:mm:ss', 'dd.MM.yyyy HH:mm', 'dd.MM.yyyy', 'HH:mm:ss', 'HH:mm'];
     if (!validFormats.includes(format)) return res.status(400).send('Invalid format');
 
@@ -54,9 +61,7 @@ app.get('/norwayTime/:format', async (req, res) => {
 });
 
 // Add a new train
-app.post('/trains', async (req, res) => {
-    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
-
+app.post('/trains', checkApiKey, async (req, res) => {
     const { trainNumber, operator, defaultRoute, extraTrain, routeNumber } = req.body;
     if (!trainNumber || !operator || !defaultRoute || extraTrain === undefined) {
         return res.status(400).send('Missing required fields');
@@ -120,9 +125,7 @@ app.get('/trains/:trainNumber/norwayTimeRoute', async (req, res) => {
 });
 
 // Fetch trains based on query
-app.get('/trains', async (req, res) => {
-    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
-
+app.get('/trains', checkApiKey, async (req, res) => {
     const { query } = req.body;
     if (!query || typeof query !== 'object') return res.status(400).send('Invalid query format');
 
@@ -136,11 +139,9 @@ app.get('/trains', async (req, res) => {
 });
 
 // Update specific train details
-app.patch('/trains/:trainNumber', async (req, res) => {
+app.patch('/trains/:trainNumber', checkApiKey, async (req, res) => {
     const { trainNumber } = req.params;
     const updates = req.body;
-
-    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
 
     try {
         const updatedTrain = await trains.findOneAndUpdate(
@@ -157,15 +158,13 @@ app.patch('/trains/:trainNumber', async (req, res) => {
 });
 
 // Apply delay to train
-app.patch('/trains/:trainNumber/delay', async (req, res) => {
+app.patch('/trains/:trainNumber/delay', checkApiKey, async (req, res) => {
     const { trainNumber } = req.params;
     const { delay, editStopTimes } = req.body;
 
     if (!trainNumber || delay === undefined || editStopTimes === undefined) {
         return res.status(400).send('Missing required fields');
     }
-
-    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
 
     try {
         const train = await trains.findOne({ trainNumber }).exec();
@@ -207,41 +206,38 @@ app.patch('/trains/:trainNumber/delay', async (req, res) => {
 });
 
 // Replace existing train details
-app.put('/trains/:trainNumber', async (req, res) => {
-    const { trainNumber } = req.params;
-    const { operator, defaultRoute, extraTrain, routeNumber } = req.body;
+app.put('/trains/:trainNumber', checkApiKey, async (req, res) => {
+    const { trainData } = req.body;
 
-    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
-
-    if (!operator || !defaultRoute || extraTrain === undefined) {
-        return res.status(400).send('Missing required fields');
+    // Check if trainData is a valid object
+    if (!trainData || typeof trainData !== 'object') {
+        return res.status(400).json({ error: 'trainData must be a valid object' });
     }
 
-    if (!Array.isArray(defaultRoute)) return res.status(400).send('defaultRoute must be an array');
+    // Validate that trainData has the required properties
+    const requiredProperties = ['trainNumber', 'operator', 'extraTrain', 'defaultRoute', 'currentRoute', 'currentFormation', 'position'];
+    const hasAllProperties = requiredProperties.every(prop => trainData.hasOwnProperty(prop));
+
+    if (!hasAllProperties) {
+        return res.status(400).json({ error: 'trainData must contain all required properties' });
+    }
 
     try {
-        const validationResult = validateRoute(defaultRoute);
-        if (validationResult !== true) return res.status(400).send(validationResult);
-
-        const currentRoute = convertToUTC(defaultRoute);
-
         const updatedTrain = await trains.findOneAndUpdate(
-            { trainNumber },
-            { operator, extraTrain, defaultRoute, currentRoute, routeNumber },
+            { trainNumber: req.params.trainNumber },
+            { $set: trainData },
             { new: true, upsert: true, runValidators: true }
         ).exec();
 
-        res.status(200).json(updatedTrain);
+        res.json(updatedTrain);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
 // Delete a train
-app.delete('/trains/:trainNumber', async (req, res) => {
+app.delete('/trains/:trainNumber', checkApiKey, async (req, res) => {
     const { trainNumber } = req.params;
-
-    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
 
     try {
         const deletedTrain = await trains.findOneAndDelete({ trainNumber }).exec();
@@ -271,9 +267,7 @@ app.get('/locations/:stationCode/departures', (req, res) => {
 });
 
 // Force update locations method
-app.post('/locations', async (req, res) => {
-    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
-
+app.post('/locations', checkApiKey, async (req, res) => {
     try {
         await updateLocations();
         res.status(200).send('Locations updated');
