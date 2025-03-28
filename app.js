@@ -182,7 +182,15 @@ app.patch('/trains/:trainNumber/delay', checkApiKey, async (req, res) => {
                     location.arrival = arrival;
                     location.departure = departure;
                 }
-            }
+            } else if (!location.passed && !location.cancelledAtStation && delayLeft > 0) {
+                const { arrival, departure } = location;
+
+                arrival.setMinutes(arrival.getMinutes() + delayLeft);
+                departure.setMinutes(departure.getMinutes() + delayLeft);
+
+                location.arrival = arrival;
+                location.departure = departure;
+            };
         });
 
         train.markModified('currentRoute');
