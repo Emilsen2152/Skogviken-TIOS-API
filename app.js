@@ -145,6 +145,41 @@ app.get('/trains', validateApiKey, async (req, res) => {
     }
 });
 
+/* Valid routedata
+    trainNumber: {
+        type: String,
+        required: true
+    },
+    operator: {
+        type: String,
+        required: true
+    },
+    extraTrain: {   
+        type: Boolean,
+        required: true
+    },
+    routeNumber: {
+        type: String,
+        required: false
+    },
+    defaultRoute: {
+        type: Array,
+        required: true
+    },
+    currentRoute: {
+        type: Array,
+        required: true
+    },
+    currentFormation: {
+        type: Object,
+        default: {}
+    },
+    position: {
+        type: Array, // Array of track areas
+        default: []
+    }
+*/
+
 app.patch('/trains/:trainNumber', validateApiKey, async (req, res) => {
     try {
         const updatedTrain = await trains.findOneAndUpdate(
@@ -156,6 +191,35 @@ app.patch('/trains/:trainNumber', validateApiKey, async (req, res) => {
         if (!updatedTrain) {
             return res.status(404).json({ error: 'Train not found' });
         }
+
+        res.json(updatedTrain);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/trains/:trainNumber', validateApiKey, async (req, res) => {
+    const { routeData } = req.body;
+
+    // Check if routeData is a valid object
+    if (!routeData || typeof routeData !== 'object') {
+        return res.status(400).json({ error: 'routeData must be a valid object' });
+    }
+
+    // Validate that routeData has the required properties
+    const requiredProperties = ['trainNumber', 'operator', 'extraTrain', 'defaultRoute', 'currentRoute', 'currentFormation', 'position'];
+    const hasAllProperties = requiredProperties.every(prop => routeData.hasOwnProperty(prop));
+
+    if (!hasAllProperties) {
+        return res.status(400).json({ error: 'routeData must contain all required properties' });
+    }
+
+    try {
+        const updatedTrain = await trains.findOneAndUpdate(
+            { trainNumber: req.params.trainNumber },
+            { $set: routeData },
+            { new: true, upsert: true, runValidators: true }
+        ).exec();
 
         res.json(updatedTrain);
     } catch (error) {
