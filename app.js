@@ -5,6 +5,7 @@ const cors = require('cors');
 const { DateTime } = require('luxon');
 const trains = require('./utils/train');
 const { dayTimer, fiveMinutesTimer, locationsArrivals, locationsDepartures, updateLocations } = require('./timers');
+const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers'); // Modularized helpers
 
 const app = express();
 app.use(express.json());
@@ -12,12 +13,13 @@ app.use(cors());
 
 const PORT = process.env.PORT || 80;
 
+// MongoDB connection
 (async () => {
     try {
         await mongoose.connect(process.env.MONGODB_URI);
         console.log('Connected to Mongo DB.');
     } catch (error) {
-        console.error(`MongoDB Error: ${error.message}`);
+        console.error(`Mongo DB Error: ${error}`);
     }
 })();
 
@@ -25,73 +27,52 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
+// Health check endpoint
 app.get('/status', (req, res) => {
     res.status(200).json({ status: 'Running' });
 });
 
-// Middleware to validate API Key
-const validateApiKey = (req, res, next) => {
-    const { key } = req.headers;
-    if (key !== process.env.API_KEY) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    next();
-};
+// Get Norway's time with API key validation
+app.get('/norwayTime', async (req, res) => {
+    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
 
-app.get('/norwayTime', validateApiKey, (req, res) => {
     const norwayTime = DateTime.now().setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm:ss');
     res.json({ norwayTime });
 });
 
-app.get('/norwayTime/:format', validateApiKey, (req, res) => {
+// Get Norway's time with custom format
+app.get('/norwayTime/:format', async (req, res) => {
     const { format } = req.params;
-    const validFormats = ['dd.MM.yyyy HH:mm:ss', 'dd.MM.yyyy HH:mm', 'dd.MM.yyyy', 'HH:mm:ss', 'HH:mm'];
+    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
 
-    if (!validFormats.includes(format)) {
-        return res.status(400).json({ error: 'Invalid format' });
-    }
+    // Validate format
+    const validFormats = ['dd.MM.yyyy HH:mm:ss', 'dd.MM.yyyy HH:mm', 'dd.MM.yyyy', 'HH:mm:ss', 'HH:mm'];
+    if (!validFormats.includes(format)) return res.status(400).send('Invalid format');
 
     const norwayTime = DateTime.now().setZone('Europe/Oslo').toFormat(format);
     res.json({ norwayTime });
 });
 
-app.post('/trains', validateApiKey, async (req, res) => {
+// Add a new train
+app.post('/trains', async (req, res) => {
+    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
+
     const { trainNumber, operator, defaultRoute, extraTrain, routeNumber } = req.body;
-
     if (!trainNumber || !operator || !defaultRoute || extraTrain === undefined) {
-        return res.status(400).json({ error: 'Missing required fields' });
+        return res.status(400).send('Missing required fields');
     }
-
-    if (!Array.isArray(defaultRoute)) {
-        return res.status(400).json({ error: 'defaultRoute must be an array' });
-    }
+    if (!Array.isArray(defaultRoute)) return res.status(400).send('defaultRoute must be an array');
 
     try {
+        const validationResult = validateRoute(defaultRoute);
+        if (validationResult !== true) return res.status(400).send(validationResult);
+
         const existingTrain = await trains.findOne({ trainNumber }).exec();
-        if (existingTrain) {
-            return res.status(409).json({ error: 'Train number already exists' });
-        }
+        if (existingTrain) return res.status(409).send('Train number already exists');
 
-        const newTrain = new trains({
-            trainNumber,
-            operator,
-            extraTrain,
-            defaultRoute,
-            currentRoute: defaultRoute.map(station => ({
-                ...station,
-                arrival: DateTime.fromObject(
-                    { hour: station.arrival.hours, minute: station.arrival.minutes },
-                    { zone: 'Europe/Oslo' }
-                ).toUTC().toJSDate(),
-                departure: DateTime.fromObject(
-                    { hour: station.departure.hours, minute: station.departure.minutes },
-                    { zone: 'Europe/Oslo' }
-                ).toUTC().toJSDate()
-            }))
-        });
+        const currentRoute = convertToUTC(defaultRoute);
 
-        if (routeNumber) newTrain.routeNumber = routeNumber;
-
+        const newTrain = new trains({ trainNumber, operator, extraTrain, defaultRoute, currentRoute, routeNumber });
         await newTrain.save();
         res.status(201).json(newTrain);
     } catch (error) {
@@ -99,29 +80,37 @@ app.post('/trains', validateApiKey, async (req, res) => {
     }
 });
 
+// Get specific train by number
 app.get('/trains/:trainNumber', async (req, res) => {
+    const { trainNumber } = req.params;
+
     try {
-        const train = await trains.findOne({ trainNumber: req.params.trainNumber }).exec();
-        if (!train) {
-            return res.status(404).json({ error: 'Train not found' });
-        }
+        const train = await trains.findOne({ trainNumber }).exec();
+        if (!train) return res.status(404).send('Train not found');
         res.json(train);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
+// Get route times for a specific train
 app.get('/trains/:trainNumber/norwayTimeRoute', async (req, res) => {
+    const { trainNumber } = req.params;
+
     try {
-        const train = await trains.findOne({ trainNumber: req.params.trainNumber }).exec();
-        if (!train) {
-            return res.status(404).json({ error: 'Train not found' });
-        }
+        const train = await trains.findOne({ trainNumber }).exec();
+        if (!train) return res.status(404).send('Train not found');
 
         const norwayTimeRoute = train.currentRoute.map(location => ({
-            ...location,
+            name: location.name,
+            code: location.code,
+            type: location.type,
+            track: location.track,
             arrival: DateTime.fromJSDate(location.arrival).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm'),
-            departure: DateTime.fromJSDate(location.departure).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm')
+            departure: DateTime.fromJSDate(location.departure).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm'),
+            stopType: location.stopType,
+            passed: location.passed,
+            cancelledAtStation: location.cancelledAtStation
         }));
 
         res.json(norwayTimeRoute);
@@ -130,139 +119,169 @@ app.get('/trains/:trainNumber/norwayTimeRoute', async (req, res) => {
     }
 });
 
-app.get('/trains', validateApiKey, async (req, res) => {
-    const { query } = req.body;
+// Fetch trains based on query
+app.get('/trains', async (req, res) => {
+    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
 
-    if (!query || typeof query !== 'object') {
-        return res.status(400).json({ error: 'Query must be a valid object' });
-    }
+    const { query } = req.body;
+    if (!query || typeof query !== 'object') return res.status(400).send('Invalid query format');
 
     try {
         const trainsList = await trains.find(query).exec();
+        if (!trainsList.length) return res.status(404).send('No trains found');
         res.json(trainsList);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-/* Valid routedata
-    trainNumber: {
-        type: String,
-        required: true
-    },
-    operator: {
-        type: String,
-        required: true
-    },
-    extraTrain: {   
-        type: Boolean,
-        required: true
-    },
-    routeNumber: {
-        type: String,
-        required: false
-    },
-    defaultRoute: {
-        type: Array,
-        required: true
-    },
-    currentRoute: {
-        type: Array,
-        required: true
-    },
-    currentFormation: {
-        type: Object,
-        default: {}
-    },
-    position: {
-        type: Array, // Array of track areas
-        default: []
-    }
-*/
+// Update specific train details
+app.patch('/trains/:trainNumber', async (req, res) => {
+    const { trainNumber } = req.params;
+    const updates = req.body;
 
-app.patch('/trains/:trainNumber', validateApiKey, async (req, res) => {
+    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
+
     try {
         const updatedTrain = await trains.findOneAndUpdate(
-            { trainNumber: req.params.trainNumber },
-            { $set: req.body },
+            { trainNumber },
+            { $set: updates },
             { new: true, runValidators: true }
         ).exec();
 
-        if (!updatedTrain) {
-            return res.status(404).json({ error: 'Train not found' });
-        }
-
-        res.json(updatedTrain);
+        if (!updatedTrain) return res.status(404).send('Train not found');
+        res.status(200).json(updatedTrain);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-app.put('/trains/:trainNumber', validateApiKey, async (req, res) => {
-    const { trainData } = req.body;
+// Apply delay to train
+app.patch('/trains/:trainNumber/delay', async (req, res) => {
+    const { trainNumber } = req.params;
+    const { delay, editStopTimes } = req.body;
 
-    // Check if trainData is a valid object
-    if (!trainData || typeof trainData !== 'object') {
-        return res.status(400).json({ error: 'trainData must be a valid object' });
+    if (!trainNumber || delay === undefined || editStopTimes === undefined) {
+        return res.status(400).send('Missing required fields');
     }
 
-    // Validate that trainData has the required properties
-    const requiredProperties = ['trainNumber', 'operator', 'extraTrain', 'defaultRoute', 'currentRoute', 'currentFormation', 'position'];
-    const hasAllProperties = requiredProperties.every(prop => trainData.hasOwnProperty(prop));
-
-    if (!hasAllProperties) {
-        return res.status(400).json({ error: 'trainData must contain all required properties' });
-    }
+    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
 
     try {
+        const train = await trains.findOne({ trainNumber }).exec();
+        if (!train) return res.status(404).send('Train not found');
+
+        let delayLeft = delay;
+        train.currentRoute.forEach(location => {
+            if (!location.passed && !location.cancelledAtStation && delayLeft > 0 && editStopTimes) {
+                const { arrival, departure } = location;
+                const stopDuration = (departure - arrival) / 60000;
+
+                if (stopDuration > 1) {
+                    const possibleReduction = stopDuration - 1;
+                    const reduction = Math.min(possibleReduction, delayLeft);
+
+                    arrival.setMinutes(arrival.getMinutes() + delayLeft);
+                    departure.setMinutes(departure.getMinutes() + delayLeft - reduction);
+
+                    location.arrival = arrival;
+                    location.departure = departure;
+
+                    delayLeft -= reduction;
+                } else {
+                    arrival.setMinutes(arrival.getMinutes() + delayLeft);
+                    departure.setMinutes(departure.getMinutes() + delayLeft);
+
+                    location.arrival = arrival;
+                    location.departure = departure;
+                }
+            }
+        });
+
+        train.markModified('currentRoute');
+        await train.save();
+        res.status(200).json(train);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Replace existing train details
+app.put('/trains/:trainNumber', async (req, res) => {
+    const { trainNumber } = req.params;
+    const { operator, defaultRoute, extraTrain, routeNumber } = req.body;
+
+    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
+
+    if (!operator || !defaultRoute || extraTrain === undefined) {
+        return res.status(400).send('Missing required fields');
+    }
+
+    if (!Array.isArray(defaultRoute)) return res.status(400).send('defaultRoute must be an array');
+
+    try {
+        const validationResult = validateRoute(defaultRoute);
+        if (validationResult !== true) return res.status(400).send(validationResult);
+
+        const currentRoute = convertToUTC(defaultRoute);
+
         const updatedTrain = await trains.findOneAndUpdate(
-            { trainNumber: req.params.trainNumber },
-            { $set: trainData },
+            { trainNumber },
+            { operator, extraTrain, defaultRoute, currentRoute, routeNumber },
             { new: true, upsert: true, runValidators: true }
         ).exec();
 
-        res.json(updatedTrain);
+        res.status(200).json(updatedTrain);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-app.delete('/trains/:trainNumber', validateApiKey, async (req, res) => {
+// Delete a train
+app.delete('/trains/:trainNumber', async (req, res) => {
+    const { trainNumber } = req.params;
+
+    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
+
     try {
-        const deletedTrain = await trains.findOneAndDelete({ trainNumber: req.params.trainNumber }).exec();
-        if (!deletedTrain) {
-            return res.status(404).json({ error: 'Train not found' });
-        }
-        res.status(200).json({ message: 'Successfully deleted' });
+        const deletedTrain = await trains.findOneAndDelete({ trainNumber }).exec();
+        if (!deletedTrain) return res.status(404).send('Train not found');
+        res.status(204).send('Successfully deleted');
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
+// Fetch arrivals for a station
 app.get('/locations/:stationCode/arrivals', (req, res) => {
-    const arrivals = locationsArrivals[req.params.stationCode];
-    if (!arrivals) {
-        return res.status(404).json({ error: 'Station not found or no arrivals available' });
-    }
-    res.json(arrivals);
+    const { stationCode } = req.params;
+
+    if (!locationsArrivals[stationCode]) return res.status(404).send('Station not found or no trains');
+
+    res.json(locationsArrivals[stationCode]);
 });
 
+// Fetch departures for a station
 app.get('/locations/:stationCode/departures', (req, res) => {
-    const departures = locationsDepartures[req.params.stationCode];
-    if (!departures) {
-        return res.status(404).json({ error: 'Station not found or no departures available' });
-    }
-    res.json(departures);
+    const { stationCode } = req.params;
+
+    if (!locationsDepartures[stationCode]) return res.status(404).send('Station not found or no trains');
+
+    res.json(locationsDepartures[stationCode]);
 });
 
-app.post('/locations', validateApiKey, async (req, res) => {
+// Force update locations method
+app.post('/locations', async (req, res) => {
+    if (!checkApiKey(req)) return res.status(401).send('Unauthorized');
+
     try {
         await updateLocations();
-        res.status(200).json({ message: 'Locations updated' });
+        res.status(200).send('Locations updated');
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
+// Start timers
 dayTimer.start();
 fiveMinutesTimer.start();
