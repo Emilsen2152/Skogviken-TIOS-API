@@ -32,18 +32,6 @@ app.get('/status', (req, res) => {
     res.status(200).json({ status: 'Running' });
 });
 
-// Middleware to check API key
-const checkApiKey = (req, res, next) => {
-    const apiKey = req.headers['x-api-key'];
-    
-    // Replace this with actual API key validation logic
-    if (!apiKey || apiKey !== process.env.API_KEY) {
-        return res.status(401).send('Unauthorized');
-    }
-
-    next();  // Proceed to the next middleware or route handler
-};
-
 // Get Norway's time with API key validation
 app.get('/norwayTime', checkApiKey, async (req, res) => {
     const norwayTime = DateTime.now().setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm:ss');
