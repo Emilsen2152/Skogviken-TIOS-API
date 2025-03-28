@@ -199,25 +199,25 @@ app.patch('/trains/:trainNumber', validateApiKey, async (req, res) => {
 });
 
 app.put('/trains/:trainNumber', validateApiKey, async (req, res) => {
-    const { routeData } = req.body;
+    const { trainData } = req.body;
 
-    // Check if routeData is a valid object
-    if (!routeData || typeof routeData !== 'object') {
-        return res.status(400).json({ error: 'routeData must be a valid object' });
+    // Check if trainData is a valid object
+    if (!trainData || typeof trainData !== 'object') {
+        return res.status(400).json({ error: 'trainData must be a valid object' });
     }
 
-    // Validate that routeData has the required properties
+    // Validate that trainData has the required properties
     const requiredProperties = ['trainNumber', 'operator', 'extraTrain', 'defaultRoute', 'currentRoute', 'currentFormation', 'position'];
-    const hasAllProperties = requiredProperties.every(prop => routeData.hasOwnProperty(prop));
+    const hasAllProperties = requiredProperties.every(prop => trainData.hasOwnProperty(prop));
 
     if (!hasAllProperties) {
-        return res.status(400).json({ error: 'routeData must contain all required properties' });
+        return res.status(400).json({ error: 'trainData must contain all required properties' });
     }
 
     try {
         const updatedTrain = await trains.findOneAndUpdate(
             { trainNumber: req.params.trainNumber },
-            { $set: routeData },
+            { $set: trainData },
             { new: true, upsert: true, runValidators: true }
         ).exec();
 
