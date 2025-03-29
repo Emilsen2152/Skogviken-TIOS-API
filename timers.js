@@ -110,7 +110,7 @@ async function updateLocations() {
                 fullRoute: train.currentRoute
             };
 
-            newLocationsDepartures[location.code][train.trainNumber] = {
+            newLocationsDepartures[location.code][train.trainNumber] = { 
                 trainNumber: train.trainNumber,
                 operator: train.operator,
                 extraTrain: train.extraTrain,
@@ -121,8 +121,10 @@ async function updateLocations() {
                 track: location.track,
                 arrival: location.arrival,
                 norwegianArrival: norwegianArrivalTime,
+                arrivalDelay: arrivalDelay,
                 departure: location.departure,
                 norwegianDeparture: norwegianDepartureTime,
+                departureDelay: departureDelay,
                 fullRoute: train.currentRoute
             };
         });
