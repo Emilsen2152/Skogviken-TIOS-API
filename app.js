@@ -29,7 +29,7 @@ app.listen(PORT, '0.0.0.0', () => {
 
 // Health check endpoint
 app.get('/status', (req, res) => {
-    res.status(200).json({ status: 'Running' });
+    res.status(200).json({ status: 'OK' });
 });
 
 // Get Norway's time with API key validation
