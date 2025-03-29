@@ -318,7 +318,7 @@ app.delete('/trains/:trainNumber', checkApiKey, async (req, res) => {
     try {
         const deletedTrain = await trains.findOneAndDelete({ trainNumber }).exec();
         if (!deletedTrain) return res.status(404).json({ error: 'Train not found' });
-        res.status(204); //.json({ message: 'Successfully deleted' });
+        res.status(204).send(); //.json({ message: 'Successfully deleted' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
