@@ -72,6 +72,19 @@ async function updateLocations() {
             if (!newLocationsDepartures[location.code]) {
                 newLocationsDepartures[location.code] = {}; // Fix: Initialize station code if it doesn’t exist
             }
+
+            //Convert times to Norwegian time
+            const norwegianArrival = DateTime.fromJSDate(location.arrival, { zone: 'UTC' }).setZone('Europe/Oslo');
+            const norwegianDeparture = DateTime.fromJSDate(location.departure, { zone: 'UTC' }).setZone('Europe/Oslo');
+
+            const norwegianArrivalTime = {
+                hours: norwegianArrival.hour,
+                minutes: norwegianArrival.minute
+            };
+            const norwegianDepartureTime = {
+                hours: norwegianDeparture.hour,
+                minutes: norwegianDeparture.minute
+            };
             
             newLocationsArrivals[location.code][train.trainNumber] = { 
                 trainNumber: train.trainNumber,
@@ -83,7 +96,9 @@ async function updateLocations() {
                 isCancelledAtStation: location.cancelledAtStation,
                 track: location.track,
                 arrival: location.arrival,
+                norwegianArrival: norwegianArrivalTime,
                 departure: location.departure,
+                norwegianDeparture: norwegianDepartureTime,
                 fullRoute: train.currentRoute
             };
 
@@ -97,7 +112,9 @@ async function updateLocations() {
                 isCancelledAtStation: location.cancelledAtStation,
                 track: location.track,
                 arrival: location.arrival,
+                norwegianArrival: norwegianArrivalTime,
                 departure: location.departure,
+                norwegianDeparture: norwegianDepartureTime,
                 fullRoute: train.currentRoute
             };
         });
