@@ -50,7 +50,7 @@ app.get('/norwayTime/:format', checkApiKey, async (req, res) => {
 
 // Add a new train
 app.post('/trains', checkApiKey, async (req, res) => {
-    const { trainNumber, operator, defaultRoute, extraTrain, routeNumber } = req.body;
+    const { trainNumber, operator, defaultRoute, extraTrain, routeNumber, currentFormation } = req.body;
     if (!trainNumber || !operator || !defaultRoute || extraTrain === undefined) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -65,7 +65,7 @@ app.post('/trains', checkApiKey, async (req, res) => {
 
         const currentRoute = convertToUTC(defaultRoute);
 
-        const newTrain = new trains({ trainNumber, operator, extraTrain, defaultRoute, currentRoute, routeNumber });
+        const newTrain = new trains({ trainNumber, operator, extraTrain, defaultRoute, currentRoute, routeNumber, currentFormation });
         await newTrain.save();
         res.status(201).json(newTrain);
     } catch (error) {
@@ -279,6 +279,34 @@ app.patch('/trains/:trainNumber/delay', checkApiKey, async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+});
+
+// Cancel a train at a specific location or all locations
+app.patch('/train/:trainNumber/cancel', checkApiKey, async (req, res) => {
+    const { trainNumber } = req.params;
+
+    const { startLocation } = req.body;
+
+    const train = await trains.find({ trainNumber }).exec();
+
+    if (!train) return res.status(404).json({ error: 'Train not found' });
+
+    if (!startLocation) {
+        train.currentRoute.forEach(location => {
+            if (!location.passed) {
+                location.cancelledAtStation = true;
+            };
+        });
+    } else {
+        const startIndex = train.currentRoute.findIndex(location => location.code === startLocation);
+        if (startIndex === -1) return res.status(404).json({ error: 'Location not found in current route' });
+
+        train.currentRoute.forEach((location, index) => {
+            if (index >= startIndex) {
+                location.cancelledAtStation = true;
+            };
+        });
+    };
 });
 
 // Replace existing train details
