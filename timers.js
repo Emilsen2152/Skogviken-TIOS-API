@@ -86,8 +86,8 @@ async function updateLocations() {
                 minutes: norwegianDeparture.minute
             };
 
-            const defaultArrival = DateTime.fromObject({hour: location.defaultRoute.arrival.hours, minute: location.defaultRoute.arrival.minutes}, { zone: 'Europe/Oslo' });
-            const defaultDeparture = DateTime.fromObject({hour: location.defaultRoute.departure.hours, minute: location.defaultRoute.departure.minutes}, { zone: 'Europe/Oslo' });
+            const defaultArrival = DateTime.fromObject({hour: train.defaultRoute[location.code].arrival.hours, minute: train.defaultRoute[location.code].arrival.minutes}, { zone: 'Europe/Oslo' });
+            const defaultDeparture = DateTime.fromObject({hour: train.defaultRoute[location.code].departure.hours, minute: train.defaultRoute[location.code].departure.minutes}, { zone: 'Europe/Oslo' });
 
             const norwegianDefaultArrivalTime = {
                 hours: defaultArrival.hour,
