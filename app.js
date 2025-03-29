@@ -145,6 +145,86 @@ app.patch('/trains/:trainNumber', checkApiKey, async (req, res) => {
     }
 });
 
+app.get('/trains/:trainNumber/route/:locationCode/arrival/delay', async (req, res) => {
+    const { trainNumber, locationCode } = req.params;
+
+    const train = trains.findOne({ trainNumber }).exec();
+    if (!train) return res.status(404).json({ error: 'Train not found' });
+
+    const location = train.currentRoute.find(loc => loc.code === locationCode);
+    if (!location) return res.status(404).json({ error: 'Location not found in trains current route' });
+
+    if (location.cancelledAtStation) return res.status(400).json({ error: 'Train is cancelled at this station' });
+
+    const defaultLocation = train.defaultRoute.find(loc => loc.code === locationCode);
+    if (!defaultLocation) return res.status(404).json({ error: 'Location not found in default route' });
+
+    try {
+        const arrival = DateTime.fromJSDate(location.arrival).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm:ss');
+        /*
+        Default route arrival time format. In norwegian time zone.
+
+        arrival: {
+            hours: Number
+            minutes: Number,
+        },
+        */
+        
+        const arrivalHours = defaultLocation.arrival.hours;
+        const arrivalMinutes = defaultLocation.arrival.minutes;
+
+        const defaultArrivalTime = DateTime.fromObject({ hour: arrivalHours, minute: arrivalMinutes }, { zone: 'Europe/Oslo' }).toUTC().toJSDate();
+
+        const delay = Math.floor((location.arrival - defaultArrivalTime) / 60000); // Convert milliseconds to minutes
+
+        res.status(200).json({
+            delay
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/trains/:trainNumber/route/:locationCode/departure/delay', async (req, res) => {
+    const { trainNumber, locationCode } = req.params;
+
+    const train = trains.findOne({ trainNumber }).exec();
+    if (!train) return res.status(404).json({ error: 'Train not found' });
+
+    const location = train.currentRoute.find(loc => loc.code === locationCode);
+    if (!location) return res.status(404).json({ error: 'Location not found in trains current route' });
+
+    if (location.cancelledAtStation) return res.status(400).json({ error: 'Train is cancelled at this station' });
+
+    const defaultLocation = train.defaultRoute.find(loc => loc.code === locationCode);
+    if (!defaultLocation) return res.status(404).json({ error: 'Location not found in default route' });
+
+    try {
+        const departure = DateTime.fromJSDate(location.departure).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm:ss');
+        /*
+        Default route departure time format. In norwegian time zone.
+
+        departure: {
+            hours: Number
+            minutes: Number,
+        },
+        */
+        
+        const departureHours = defaultLocation.departure.hours;
+        const departureMinutes = defaultLocation.departure.minutes;
+
+        const defaultDepartureTime = DateTime.fromObject({ hour: departureHours, minute: departureMinutes }, { zone: 'Europe/Oslo' }).toUTC().toJSDate();
+
+        const delay = Math.floor((location.departure - defaultDepartureTime) / 60000); // Convert milliseconds to minutes
+
+        res.status(200).json({
+            delay
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Apply delay to train
 app.patch('/trains/:trainNumber/delay', checkApiKey, async (req, res) => {
     const { trainNumber } = req.params;
