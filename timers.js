@@ -102,9 +102,11 @@ async function updateLocations() {
                 isCancelledAtStation: location.cancelledAtStation,
                 track: location.track,
                 arrival: location.arrival,
+                defaultArrival: defaultArrival.toJSDate(),
                 norwegianArrival: norwegianArrivalTime,
                 arrivalDelay: arrivalDelay,
                 departure: location.departure,
+                defaultDeparture: defaultDeparture.toJSDate(),
                 norwegianDeparture: norwegianDepartureTime,
                 departureDelay: departureDelay,
                 fullRoute: train.currentRoute
@@ -120,9 +122,11 @@ async function updateLocations() {
                 isCancelledAtStation: location.cancelledAtStation,
                 track: location.track,
                 arrival: location.arrival,
+                defaultArrival: defaultArrival.toJSDate(),
                 norwegianArrival: norwegianArrivalTime,
                 arrivalDelay: arrivalDelay,
                 departure: location.departure,
+                defaultDeparture: defaultDeparture.toJSDate(),
                 norwegianDeparture: norwegianDepartureTime,
                 departureDelay: departureDelay,
                 fullRoute: train.currentRoute
