@@ -72,18 +72,31 @@ async function updateLocations() {
             if (!newLocationsDepartures[location.code]) {
                 newLocationsDepartures[location.code] = {}; // Fix: Initialize station code if it doesn’t exist
             }
+            
             newLocationsArrivals[location.code][train.trainNumber] = { 
-                trainNumber: train.trainNumber, 
-                hasPassed: location.passed, 
-                arrival: location.arrival, 
+                trainNumber: train.trainNumber,
+                operator: train.operator,
+                extraTrain: train.extraTrain,
+                routeNumber: train.routeNumber,
+                stopType: location.type,
+                hasPassed: location.passed,
+                isCancelledAtStation: location.cancelledAtStation,
+                track: location.track,
+                arrival: location.arrival,
                 departure: location.departure 
             };
 
             newLocationsDepartures[location.code][train.trainNumber] = {
                 trainNumber: train.trainNumber,
+                operator: train.operator,
+                extraTrain: train.extraTrain,
+                routeNumber: train.routeNumber,
+                stopType: location.type,
                 hasPassed: location.passed,
+                isCancelledAtStation: location.cancelledAtStation,
+                track: location.track,
                 arrival: location.arrival,
-                departure: location.departure
+                departure: location.departure 
             };
         });
     });
