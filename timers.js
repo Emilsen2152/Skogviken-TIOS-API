@@ -83,7 +83,8 @@ async function updateLocations() {
                 isCancelledAtStation: location.cancelledAtStation,
                 track: location.track,
                 arrival: location.arrival,
-                departure: location.departure 
+                departure: location.departure,
+                fullRoute: train.currentRoute
             };
 
             newLocationsDepartures[location.code][train.trainNumber] = {
@@ -96,7 +97,8 @@ async function updateLocations() {
                 isCancelledAtStation: location.cancelledAtStation,
                 track: location.track,
                 arrival: location.arrival,
-                departure: location.departure 
+                departure: location.departure,
+                fullRoute: train.currentRoute
             };
         });
     });
