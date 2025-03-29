@@ -148,7 +148,7 @@ app.patch('/trains/:trainNumber', checkApiKey, async (req, res) => {
 app.get('/trains/:trainNumber/route/:locationCode/arrival/delay', async (req, res) => {
     const { trainNumber, locationCode } = req.params;
 
-    const train = trains.findOne({ trainNumber }).exec();
+    const train = await trains.findOne({ trainNumber }).exec();
     if (!train) return res.status(404).json({ error: 'Train not found' });
 
     const location = train.currentRoute.find(loc => loc.code === locationCode);
@@ -160,7 +160,7 @@ app.get('/trains/:trainNumber/route/:locationCode/arrival/delay', async (req, re
     if (!defaultLocation) return res.status(404).json({ error: 'Location not found in default route' });
 
     try {
-        const arrival = DateTime.fromJSDate(location.arrival).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm:ss');
+        const arrival = DateTime.fromJSDate(location.arrival).setZone('Europe/Oslo');
         /*
         Default route arrival time format. In norwegian time zone.
 
@@ -175,7 +175,7 @@ app.get('/trains/:trainNumber/route/:locationCode/arrival/delay', async (req, re
 
         const defaultArrivalTime = DateTime.fromObject({ hour: arrivalHours, minute: arrivalMinutes }, { zone: 'Europe/Oslo' }).toUTC().toJSDate();
 
-        const delay = Math.floor((location.arrival - defaultArrivalTime) / 60000); // Convert milliseconds to minutes
+        const delay = Math.floor((arrival - defaultArrivalTime) / 60000); // Convert milliseconds to minutes
 
         res.status(200).json({
             delay
@@ -188,7 +188,7 @@ app.get('/trains/:trainNumber/route/:locationCode/arrival/delay', async (req, re
 app.get('/trains/:trainNumber/route/:locationCode/departure/delay', async (req, res) => {
     const { trainNumber, locationCode } = req.params;
 
-    const train = trains.findOne({ trainNumber }).exec();
+    const train = await trains.findOne({ trainNumber }).exec();
     if (!train) return res.status(404).json({ error: 'Train not found' });
 
     const location = train.currentRoute.find(loc => loc.code === locationCode);
@@ -200,7 +200,7 @@ app.get('/trains/:trainNumber/route/:locationCode/departure/delay', async (req, 
     if (!defaultLocation) return res.status(404).json({ error: 'Location not found in default route' });
 
     try {
-        const departure = DateTime.fromJSDate(location.departure).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm:ss');
+        const departure = DateTime.fromJSDate(location.departure).setZone('Europe/Oslo');
         /*
         Default route departure time format. In norwegian time zone.
 
@@ -215,7 +215,7 @@ app.get('/trains/:trainNumber/route/:locationCode/departure/delay', async (req, 
 
         const defaultDepartureTime = DateTime.fromObject({ hour: departureHours, minute: departureMinutes }, { zone: 'Europe/Oslo' }).toUTC().toJSDate();
 
-        const delay = Math.floor((location.departure - defaultDepartureTime) / 60000); // Convert milliseconds to minutes
+        const delay = Math.floor((departure - defaultDepartureTime) / 60000); // Convert milliseconds to minutes
 
         res.status(200).json({
             delay
