@@ -86,7 +86,7 @@ async function updateLocations() {
                 minutes: norwegianDeparture.minute
             };
 
-            const index = train.currentRoute.findIndex(station => station.code === location.code);
+            const index = train.defaultRoute.findIndex(station => station.code === location.code);
 
             const defaultArrival = DateTime.fromObject({hour: train.defaultRoute[index].arrival.hours, minute: train.defaultRoute[index].arrival.minutes}, { zone: 'Europe/Oslo' });
             const defaultDeparture = DateTime.fromObject({hour: train.defaultRoute[index].departure.hours, minute: train.defaultRoute[index].departure.minutes}, { zone: 'Europe/Oslo' });
