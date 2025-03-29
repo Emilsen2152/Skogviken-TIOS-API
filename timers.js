@@ -85,6 +85,12 @@ async function updateLocations() {
                 hours: norwegianDeparture.hour,
                 minutes: norwegianDeparture.minute
             };
+
+            const defaultArrival = DateTime.fromObject({hour: location.defaultRoute.arrival.hours, minute: location.defaultRoute.arrival.minutes}, { zone: 'Europe/Oslo' });
+            const defaultDeparture = DateTime.fromObject({hour: location.defaultRoute.departure.hours, minute: location.defaultRoute.departure.minutes}, { zone: 'Europe/Oslo' });
+
+            const arrivalDelay = norwegianArrival.toMillis() - defaultArrival.toMillis();
+            const departureDelay = norwegianDeparture.toMillis() - defaultDeparture.toMillis();
             
             newLocationsArrivals[location.code][train.trainNumber] = { 
                 trainNumber: train.trainNumber,
@@ -97,8 +103,10 @@ async function updateLocations() {
                 track: location.track,
                 arrival: location.arrival,
                 norwegianArrival: norwegianArrivalTime,
+                arrivalDelay: arrivalDelay,
                 departure: location.departure,
                 norwegianDeparture: norwegianDepartureTime,
+                departureDelay: departureDelay,
                 fullRoute: train.currentRoute
             };
 
