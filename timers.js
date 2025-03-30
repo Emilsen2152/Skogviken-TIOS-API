@@ -4,8 +4,20 @@ const { DateTime } = require('luxon');
 
 console.log('Timers are running...');
 
-const locationsArrivals = {};
-const locationsDepartures = {};
+const locationsArrivals = {
+    SK: [],
+    SIG: [],
+    SIP: [],
+    VBT: [],
+    KLH: []
+};
+const locationsDepartures = {
+    SK: [],
+    SIG: [],
+    SIP: [],
+    VBT: [],
+    KLH: []
+};
 
 // New day timer
 const dayTimer = new CronJob('0 0 0 * * *', async () => {
@@ -61,8 +73,20 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
 async function updateLocations() {
     const allTrains = await trains.find({});
 
-    const newLocationsArrivals = {};
-    const newLocationsDepartures = {};
+    const newLocationsArrivals = {
+        SK: [],
+        SIG: [],
+        SIP: [],
+        VBT: [],
+        KLH: []
+    };
+    const newLocationsDepartures = {
+        SK: [],
+        SIG: [],
+        SIP: [],
+        VBT: [],
+        KLH: []
+    };
     
     allTrains.forEach(train => {
         train.currentRoute.forEach(location => {
