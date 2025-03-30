@@ -126,8 +126,8 @@ async function updateLocations() {
                 minutes: defaultDeparture.minute
             }
 
-            const arrivalDelay = norwegianArrival.toMillis() - defaultArrival.toMillis();
-            const departureDelay = norwegianDeparture.toMillis() - defaultDeparture.toMillis();
+            const arrivalDelay = norwegianArrival.toMillis() - defaultArrival.toMillis() / 60_000;
+            const departureDelay = norwegianDeparture.toMillis() - defaultDeparture.toMillis() / 60_000;
             
             newLocationsArrivals[location.code][train.trainNumber] = { 
                 trainNumber: train.trainNumber,
