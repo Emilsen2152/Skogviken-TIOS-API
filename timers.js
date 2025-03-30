@@ -87,6 +87,7 @@ async function updateLocations() {
             };
 
             const index = train.defaultRoute.findIndex(station => station.code === location.code);
+            const isLast = train.currentRoute.findIndex(station => station.code === location.code) === train.currentRoute.length - 1; 
 
             const defaultArrival = DateTime.fromObject({hour: train.defaultRoute[index].arrival.hours, minute: train.defaultRoute[index].arrival.minutes}, { zone: 'Europe/Oslo' });
             const defaultDeparture = DateTime.fromObject({hour: train.defaultRoute[index].departure.hours, minute: train.defaultRoute[index].departure.minutes}, { zone: 'Europe/Oslo' });
@@ -127,28 +128,30 @@ async function updateLocations() {
                 fullRoute: train.currentRoute
             };
 
-            newLocationsDepartures[location.code][train.trainNumber] = { 
-                trainNumber: train.trainNumber,
-                operator: train.operator,
-                extraTrain: train.extraTrain,
-                routeNumber: train.routeNumber,
-                type: location.type,
-                stopType: location.stopType,
-                hasPassed: location.passed,
-                isCancelledAtStation: location.cancelledAtStation,
-                track: location.track,
-                arrival: location.arrival,
-                defaultArrival: defaultArrival.toJSDate(),
-                norwegianArrival: norwegianArrivalTime,
-                norwegianDefaultArrival: norwegianDefaultArrivalTime,
-                arrivalDelay: arrivalDelay,
-                departure: location.departure,
-                defaultDeparture: defaultDeparture.toJSDate(),
-                norwegianDeparture: norwegianDepartureTime,
-                norwegianDefaultDeparture: norwegianDefaultDepartureTime,
-                departureDelay: departureDelay,
-                fullRoute: train.currentRoute
-            };
+            if (!isLast) {
+                newLocationsDepartures[location.code][train.trainNumber] = { 
+                    trainNumber: train.trainNumber,
+                    operator: train.operator,
+                    extraTrain: train.extraTrain,
+                    routeNumber: train.routeNumber,
+                    type: location.type,
+                    stopType: location.stopType,
+                    hasPassed: location.passed,
+                    isCancelledAtStation: location.cancelledAtStation,
+                    track: location.track,
+                    arrival: location.arrival,
+                    defaultArrival: defaultArrival.toJSDate(),
+                    norwegianArrival: norwegianArrivalTime,
+                    norwegianDefaultArrival: norwegianDefaultArrivalTime,
+                    arrivalDelay: arrivalDelay,
+                    departure: location.departure,
+                    defaultDeparture: defaultDeparture.toJSDate(),
+                    norwegianDeparture: norwegianDepartureTime,
+                    norwegianDefaultDeparture: norwegianDefaultDepartureTime,
+                    departureDelay: departureDelay,
+                    fullRoute: train.currentRoute
+                };
+            }
         });
     });
             
