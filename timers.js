@@ -139,6 +139,7 @@ async function updateLocations() {
                 hasPassed: location.passed,
                 isCancelledAtStation: location.cancelledAtStation,
                 track: location.track,
+                defaultTrack: train.defaultRoute[index].track,
                 arrival: location.arrival,
                 defaultArrival: defaultArrival.toJSDate(),
                 norwegianArrival: norwegianArrivalTime,
@@ -153,7 +154,7 @@ async function updateLocations() {
             };
 
             if (!isLast) {
-                newLocationsDepartures[location.code][train.trainNumber] = { 
+                newLocationsDepartures[location.code][train.trainNumber] = {
                     trainNumber: train.trainNumber,
                     operator: train.operator,
                     extraTrain: train.extraTrain,
@@ -163,6 +164,7 @@ async function updateLocations() {
                     hasPassed: location.passed,
                     isCancelledAtStation: location.cancelledAtStation,
                     track: location.track,
+                    defaultTrack: train.defaultRoute[index].track,
                     arrival: location.arrival,
                     defaultArrival: defaultArrival.toJSDate(),
                     norwegianArrival: norwegianArrivalTime,
@@ -175,7 +177,7 @@ async function updateLocations() {
                     departureDelay: departureDelay,
                     fullRoute: train.currentRoute
                 };
-            }
+            };
         });
     });
             
