@@ -157,12 +157,12 @@ async function updateLocations() {
             
     // Sort the trains at each location by arrival time
     Object.keys(newLocationsArrivals).forEach(location => {
-        newLocationsArrivals[location] = Object.values(newLocationsArrivals[location]).sort((a, b) => a.arrival - b.arrival);
+        newLocationsArrivals[location] = Object.values(newLocationsArrivals[location]).sort((a, b) => a.defaultArrival - b.defaultArrival);
     });
 
     // Sort the trains at each location by departure time
     Object.keys(newLocationsDepartures).forEach(location => {
-        newLocationsDepartures[location] = Object.values(newLocationsDepartures[location]).sort((a, b) => a.departure - b.departure);
+        newLocationsDepartures[location] = Object.values(newLocationsDepartures[location]).sort((a, b) => a.defaultDeparture - b.defaultDeparture);
     });
 
     // Update locations with new data
