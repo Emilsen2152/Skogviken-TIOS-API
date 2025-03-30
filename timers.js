@@ -197,8 +197,8 @@ async function updateLocations() {
     Object.assign(locationsDepartures, newLocationsDepartures); // Copy new data into existing object
 }
 
-// Every 5 minutes
-const fiveMinutesTimer = new CronJob('0 */5 * * * *', updateLocations, null, false, 'Europe/Oslo');
+// Every 40th second of every minute
+const fiveMinutesTimer = new CronJob('40 * * * * *', updateLocations, null, false, 'Europe/Oslo');
 updateLocations();
 
 
