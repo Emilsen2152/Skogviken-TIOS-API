@@ -285,7 +285,7 @@ app.patch('/trains/:trainNumber/delay', checkApiKey, async (req, res) => {
 app.patch('/trains/:trainNumber/cancel', checkApiKey, async (req, res) => {
     const { trainNumber } = req.params;
 
-    const { startLocation } = req.body;
+    const { startLocation } = req.body || {};
 
     const train = await trains.findOne({ trainNumber }).exec();
 
