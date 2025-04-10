@@ -308,8 +308,9 @@ app.patch('/trains/:trainNumber/cancel', checkApiKey, async (req, res) => {
             });
         }
 
+        train.markModified('currentRoute'); // 👈 Force Mongoose to notice the change
         await train.save();
-        res.status(200).json({ message: 'Train route updated with cancellations.' });
+        res.json({ message: 'Train route updated with cancellations.' });
 
     } catch (err) {
         console.error(err);
