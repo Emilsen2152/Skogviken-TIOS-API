@@ -282,7 +282,7 @@ app.patch('/trains/:trainNumber/delay', checkApiKey, async (req, res) => {
 });
 
 // Cancel a train at a specific location or all locations
-app.patch('/train/:trainNumber/cancel', checkApiKey, async (req, res) => {
+app.patch('/trains/:trainNumber/cancel', checkApiKey, async (req, res) => {
     const { trainNumber } = req.params;
 
     const { startLocation } = req.body;
