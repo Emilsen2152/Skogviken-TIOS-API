@@ -287,7 +287,7 @@ app.patch('/trains/:trainNumber/cancel', checkApiKey, async (req, res) => {
 
     const { startLocation } = req.body;
 
-    const train = await trains.find({ trainNumber }).exec();
+    const train = await trains.findOne({ trainNumber }).exec();
 
     if (!train) return res.status(404).json({ error: 'Train not found' });
 
