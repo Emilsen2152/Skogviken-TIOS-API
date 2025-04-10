@@ -283,30 +283,38 @@ app.patch('/trains/:trainNumber/delay', checkApiKey, async (req, res) => {
 
 // Cancel a train at a specific location or all locations
 app.patch('/trains/:trainNumber/cancel', checkApiKey, async (req, res) => {
-    const { trainNumber } = req.params;
+    try {
+        const { trainNumber } = req.params;
+        const { startLocation } = req.body || {};
 
-    const { startLocation } = req.body || {};
+        const train = await trains.findOne({ trainNumber }).exec();
 
-    const train = await trains.findOne({ trainNumber }).exec();
+        if (!train) return res.status(404).json({ error: 'Train not found' });
 
-    if (!train) return res.status(404).json({ error: 'Train not found' });
+        if (!startLocation) {
+            train.currentRoute.forEach(location => {
+                if (!location.passed) {
+                    location.cancelledAtStation = true;
+                }
+            });
+        } else {
+            const startIndex = train.currentRoute.findIndex(location => location.code === startLocation);
+            if (startIndex === -1) return res.status(404).json({ error: 'Location not found in current route' });
 
-    if (!startLocation) {
-        train.currentRoute.forEach(location => {
-            if (!location.passed) {
-                location.cancelledAtStation = true;
-            };
-        });
-    } else {
-        const startIndex = train.currentRoute.findIndex(location => location.code === startLocation);
-        if (startIndex === -1) return res.status(404).json({ error: 'Location not found in current route' });
+            train.currentRoute.forEach((location, index) => {
+                if (index >= startIndex) {
+                    location.cancelledAtStation = true;
+                }
+            });
+        }
 
-        train.currentRoute.forEach((location, index) => {
-            if (index >= startIndex) {
-                location.cancelledAtStation = true;
-            };
-        });
-    };
+        await train.save();
+        res.status(200).json({ message: 'Train route updated with cancellations.' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 // Replace existing train details
