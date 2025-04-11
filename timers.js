@@ -5,6 +5,10 @@ const { DateTime } = require('luxon');
 console.log('Timers are running...');
 
 const locationsArrivals = {
+    RUS: [],
+    IST: [],
+    MAS: [],
+    RSK: [],
     SK: [],
     SIG: [],
     SIP: [],
@@ -12,6 +16,10 @@ const locationsArrivals = {
     KLH: []
 };
 const locationsDepartures = {
+    RUS: [],
+    IST: [],
+    MAS: [],
+    RSK: [],
     SK: [],
     SIG: [],
     SIP: [],
