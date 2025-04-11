@@ -27,8 +27,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
-const allDeleteKeys = []
-
 // Health check endpoint
 app.get('/status', (req, res) => {
     res.status(200).json({ status: 'OK' });
@@ -358,31 +356,6 @@ app.delete('/trains/:trainNumber', checkApiKey, async (req, res) => {
         const deletedTrain = await trains.findOneAndDelete({ trainNumber }).exec();
         if (!deletedTrain) return res.status(404).json({ error: 'Train not found' });
         res.status(204).send(); //.json({ message: 'Successfully deleted' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.post('/authenticate/deleteAllTrains', checkApiKey, async (req, res) => {
-    // Generate reandom key for deleting all trains
-    const allDeleteKey = Date.now().toString(36).slice(-8);
-
-    allDeleteKeys.push(allDeleteKey);
-
-    res.status(200).json({ key: allDeleteKey });
-});
-
-app.delete('/deleteAllTrains', checkApiKey, async (req, res) => {
-    const allDeleteKey = req.headers.allDeleteKey
-    if (!allDeleteKey) return res.status(400).json({ error: 'Missing allDeleteKey' });
-
-    if (!allDeleteKeys.includes(allDeleteKey)) return res.status(403).json({ error: 'Invalid allDeleteKey' });
-
-    allDeleteKeys.splice(allDeleteKeys.indexOf(allDeleteKey), 1); // Remove the key from the array
-
-    try {
-        await trains.deleteMany({});
-        res.status(204).send(); //.json({ message: 'Successfully deleted all trains' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
