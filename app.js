@@ -373,7 +373,7 @@ app.post('/authenticate/deleteAllTrains', checkApiKey, async (req, res) => {
 });
 
 app.delete('/deleteAllTrains', checkApiKey, async (req, res) => {
-    const { allDeleteKey } = req.headers;
+    const allDeleteKey = req.headers.allDeleteKey
     if (!allDeleteKey) return res.status(400).json({ error: 'Missing allDeleteKey' });
 
     if (!allDeleteKeys.includes(allDeleteKey)) return res.status(403).json({ error: 'Invalid allDeleteKey' });
