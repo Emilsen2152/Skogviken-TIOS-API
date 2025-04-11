@@ -378,6 +378,8 @@ app.delete('/deleteAllTrains', checkApiKey, async (req, res) => {
 
     if (!allDeleteKeys.includes(allDeleteKey)) return res.status(403).json({ error: 'Invalid allDeleteKey' });
 
+    allDeleteKeys.splice(allDeleteKeys.indexOf(allDeleteKey), 1); // Remove the key from the array
+
     try {
         await trains.deleteMany({});
         res.status(204).send(); //.json({ message: 'Successfully deleted all trains' });
