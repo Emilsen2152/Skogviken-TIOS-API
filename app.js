@@ -363,7 +363,7 @@ app.delete('/trains/:trainNumber', checkApiKey, async (req, res) => {
     }
 });
 
-app.post('/authenticate/trains/delete', checkApiKey, async (req, res) => {
+app.post('/authenticate/deleteAllTrains', checkApiKey, async (req, res) => {
     // Generate reandom key for deleting all trains
     const allDeleteKey = Date.now().toString(36).slice(-8);
 
