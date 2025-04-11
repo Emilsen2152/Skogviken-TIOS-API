@@ -82,6 +82,10 @@ async function updateLocations() {
     const allTrains = await trains.find({});
 
     const newLocationsArrivals = {
+        RUS: [],
+        IST: [],
+        MAS: [],
+        RSK: [],
         SK: [],
         SIG: [],
         SIP: [],
@@ -89,6 +93,10 @@ async function updateLocations() {
         KLH: []
     };
     const newLocationsDepartures = {
+        RUS: [],
+        IST: [],
+        MAS: [],
+        RSK: [],
         SK: [],
         SIG: [],
         SIP: [],
