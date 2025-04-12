@@ -28,8 +28,8 @@ const locationsDepartures = {
     KLH: []
 };
 
-function isRailwayActive() {
-    const allServers = servers.find({});
+async function isRailwayActive() {
+    const allServers = await servers.find({}).exec();
     let activeRailwayWorkers = 0;
     allServers.forEach(server => {
         activeRailwayWorkers += server.activeRailwayWorkers;
@@ -115,7 +115,7 @@ async function updateLocations() {
         KLH: []
     };
 
-    const isRailwayActiveNow = isRailwayActive();
+    const isRailwayActiveNow = await isRailwayActive();
     
     allTrains.forEach(train => {
         if (isRailwayActiveNow || train.currentRoute[0].arrival > new Date()) {
