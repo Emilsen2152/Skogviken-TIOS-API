@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const { DateTime } = require('luxon');
 const trains = require('./utils/train');
+const servers = require('./utils/server');
 const { dayTimer, fiveMinutesTimer, locationsArrivals, locationsDepartures, updateLocations } = require('./timers');
 const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers'); // Modularized helpers
 
@@ -387,6 +388,47 @@ app.post('/locations', checkApiKey, async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+});
+
+app.post('/servers', checkApiKey, async (req, res) => {
+    const { jobId } = req.body;
+    
+    if (!jobId) return res.status(400).json({ error: 'Missing jobId' });
+
+    const existingServer = await servers.findOne({ jobId }).exec();
+    if (existingServer) return res.status(409).json({ error: 'Server already exists' });
+
+    try {
+        const newServer = new servers({ jobId });
+        await newServer.save();
+        res.status(201).json(newServer);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.patch('/servers/:jobId', checkApiKey, async (req, res) => {
+    const { jobId } = req.params;
+    const { activeRailwayWorkers } = req.body;
+
+    if (!activeRailwayWorkers) return res.status(400).json({ error: 'Missing activeRailwayWorkers' });
+
+    const updatedServer = await servers.findOneAndUpdate(
+        { jobId },
+        { $set: { activeRailwayWorkers } },
+        { new: true, runValidators: true }
+    ).exec();
+
+    if (!updatedServer) return res.status(404).json({ error: 'Server not found' });
+    res.status(200).json(updatedServer);
+});
+
+app.delete('/servers/:jobId', checkApiKey, async (req, res) => {
+    const { jobId } = req.params;
+
+    const deletedServer = await servers.findOneAndDelete({ jobId }).exec();
+    if (!deletedServer) return res.status(404).json({ error: 'Server not found' });
+    res.status(204).send(); //.json({ message: 'Successfully deleted' });
 });
 
 // Start timers
