@@ -40,13 +40,20 @@ app.get('/norwayTime', checkApiKey, async (req, res) => {
 });
 
 // Get Norway's time with custom format
-app.get('/norwayTime/:format', checkApiKey, async (req, res) => {
+app.get('/norwayTime/custom/:format', checkApiKey, async (req, res) => {
     const { format } = req.params;
     const validFormats = ['dd.MM.yyyy HH:mm:ss', 'dd.MM.yyyy HH:mm', 'dd.MM.yyyy', 'HH:mm:ss', 'HH:mm'];
     if (!validFormats.includes(format)) return res.status(400).json({ error: 'Invalid format' });
 
     const norwayTime = DateTime.now().setZone('Europe/Oslo').toFormat(format);
-    res.json({ norwayTime });
+    res.status(200).json({ norwayTime });
+});
+
+app.get('/norwayTime/offset', checkApiKey, async (req, res) => {
+    // Get offset from UTC in hours
+    const norwayTime = DateTime.now().setZone('Europe/Oslo');
+    const offset = norwayTime.offset / 60; // Convert minutes to hours
+    res.json({ offset });
 });
 
 // Add a new train
