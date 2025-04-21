@@ -399,6 +399,7 @@ app.post('/locations', checkApiKey, async (req, res) => {
 
 app.post('/servers', checkApiKey, async (req, res) => {
     const { jobId } = req.body;
+    console.log(req.body); // Debugging line
     console.log('Received jobId:', jobId); // Debugging line
     
     if (!jobId) return res.status(400).json({ error: 'Missing jobId' });
