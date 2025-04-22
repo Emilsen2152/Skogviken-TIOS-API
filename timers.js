@@ -92,172 +92,108 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
 async function updateLocations() {
     const allTrains = await trains.find({});
 
-    const newLocationsArrivals = {
-        RUS: [],
-        IST: [],
-        MAS: [],
-        RSK: [],
-        SK: [],
-        SIG: [],
-        SIP: [],
-        VBT: [],
-        KLH: []
-    };
-    const newLocationsDepartures = {
-        RUS: [],
-        IST: [],
-        MAS: [],
-        RSK: [],
-        SK: [],
-        SIG: [],
-        SIP: [],
-        VBT: [],
-        KLH: []
-    };
+    const newLocationsArrivals = { RUS: [], IST: [], MAS: [], RSK: [], SK: [], SIG: [], SIP: [], VBT: [], KLH: [] };
+    const newLocationsDepartures = { RUS: [], IST: [], MAS: [], RSK: [], SK: [], SIG: [], SIP: [], VBT: [], KLH: [] };
 
     const isRailwayActiveNow = await isRailwayActive();
-    
-    allTrains.forEach(async train => {
+    const modifiedTrains = [];
+
+    for (const train of allTrains) {
         if (!isRailwayActiveNow || !(train.currentRoute[0].arrival > new Date())) {
             train.currentRoute.forEach(location => {
-                location.cancelledAtStation = true; // Mark the train as cancelled at the station
+                location.cancelledAtStation = true;
             });
-            train.markModified('currentRoute'); // Mark the currentRoute field as modified
-            await train.save(); // Save the changes to the train document              
-        };
+            train.markModified('currentRoute');
+        }
 
-        train.currentRoute.forEach(location => {
-            if (!newLocationsArrivals[location.code]) {
-                newLocationsArrivals[location.code] = {}; // Fix: Initialize station code if it doesn’t exist
-            }
-            if (!newLocationsDepartures[location.code]) {
-                newLocationsDepartures[location.code] = {}; // Fix: Initialize station code if it doesn’t exist
-            }
+        for (let currentIndex = 0; currentIndex < train.currentRoute.length; currentIndex++) {
+            const location = train.currentRoute[currentIndex];
+            const index = train.defaultRoute.findIndex(station => station.code === location.code);
+            if (index === -1) continue;
 
-            if (!location.passed) {
-                if (location.departure < new Date()) {
-                    location.departure = new Date().setSeconds(0,0); // Set departure time to now if it has not passed, automatic delay
-                }
+            if (!newLocationsArrivals[location.code]) newLocationsArrivals[location.code] = {};
+            if (!newLocationsDepartures[location.code]) newLocationsDepartures[location.code] = {};
+
+            if (!location.passed && location.departure < new Date()) {
+                location.departure = new Date().setSeconds(0,0);
+                train.markModified('currentRoute');
             }
 
-            //Convert times to Norwegian time
             const norwegianArrival = DateTime.fromJSDate(location.arrival, { zone: 'UTC' }).setZone('Europe/Oslo');
             const norwegianDeparture = DateTime.fromJSDate(location.departure, { zone: 'UTC' }).setZone('Europe/Oslo');
 
-            const norwegianArrivalTime = {
-                hours: norwegianArrival.hour,
-                minutes: norwegianArrival.minute
-            };
-            const norwegianDepartureTime = {
-                hours: norwegianDeparture.hour,
-                minutes: norwegianDeparture.minute
-            };
+            const defaultArrival = DateTime.fromObject(train.defaultRoute[index].arrival, { zone: 'Europe/Oslo' });
+            const defaultDeparture = DateTime.fromObject(train.defaultRoute[index].departure, { zone: 'Europe/Oslo' });
 
-            const index = train.defaultRoute.findIndex(station => station.code === location.code);
-            const currentIndex = train.currentRoute.findIndex(station => station.code === location.code);
-            const isLast = currentIndex === train.currentRoute.length - 1;
+            const arrivalDelay = (norwegianArrival.toMillis() - defaultArrival.toMillis()) / 60_000;
+            const departureDelay = (norwegianDeparture.toMillis() - defaultDeparture.toMillis()) / 60_000;
+
             const isFirst = currentIndex === 0;
-
+            const isLast = currentIndex === train.currentRoute.length - 1;
             const isHoldeplass = location.type === 'holdeplass';
 
             if (isHoldeplass) {
                 const lastLocation = train.currentRoute[currentIndex - 1];
-                if (lastLocation) {
-                    // check if location departure time has passed and it has passed last station
-                    if (location.departure < new Date() && lastLocation.passed) {
-                        location.passed = true; // Mark the location as passed
-                    } else {
-                        location.passed = false; // Mark the location as not passed
-                    };
-                };
+                if (lastLocation && location.departure < new Date() && lastLocation.passed) {
+                    location.passed = true;
+                    train.markModified('currentRoute');
+                }
+            }
+
+            const stationData = {
+                trainNumber: train.trainNumber,
+                operator: train.operator,
+                extraTrain: train.extraTrain,
+                routeNumber: train.routeNumber,
+                type: location.type,
+                stopType: location.stopType,
+                hasPassed: location.passed,
+                isCancelledAtStation: location.cancelledAtStation,
+                track: location.track,
+                defaultTrack: train.defaultRoute[index].track,
+                arrival: location.arrival,
+                defaultArrival: defaultArrival.toJSDate(),
+                norwegianArrival: { hours: norwegianArrival.hour, minutes: norwegianArrival.minute },
+                norwegianDefaultArrival: { hours: defaultArrival.hour, minutes: defaultArrival.minute },
+                arrivalDelay,
+                departure: location.departure,
+                defaultDeparture: defaultDeparture.toJSDate(),
+                norwegianDeparture: { hours: norwegianDeparture.hour, minutes: norwegianDeparture.minute },
+                norwegianDefaultDeparture: { hours: defaultDeparture.hour, minutes: defaultDeparture.minute },
+                departureDelay,
+                fullRoute: train.currentRoute
             };
 
-            const defaultArrival = DateTime.fromObject({hour: train.defaultRoute[index].arrival.hours, minute: train.defaultRoute[index].arrival.minutes}, { zone: 'Europe/Oslo' });
-            const defaultDeparture = DateTime.fromObject({hour: train.defaultRoute[index].departure.hours, minute: train.defaultRoute[index].departure.minutes}, { zone: 'Europe/Oslo' });
-
-            const norwegianDefaultArrivalTime = {
-                hours: defaultArrival.hour,
-                minutes: defaultArrival.minute
-            }
-
-            const norwegianDefaultDepartureTime = {
-                hours: defaultDeparture.hour,
-                minutes: defaultDeparture.minute
-            }
-
-            const arrivalDelay = (norwegianArrival.toMillis() - defaultArrival.toMillis()) / 60_000;
-            const departureDelay = (norwegianDeparture.toMillis() - defaultDeparture.toMillis()) / 60_000;
-            
             if (!isFirst) {
-                newLocationsArrivals[location.code][train.trainNumber] = { 
-                    trainNumber: train.trainNumber,
-                    operator: train.operator,
-                    extraTrain: train.extraTrain,
-                    routeNumber: train.routeNumber,
-                    type: location.type,
-                    stopType: location.stopType,
-                    hasPassed: location.passed,
-                    isCancelledAtStation: location.cancelledAtStation,
-                    track: location.track,
-                    defaultTrack: train.defaultRoute[index].track,
-                    arrival: location.arrival,
-                    defaultArrival: defaultArrival.toJSDate(),
-                    norwegianArrival: norwegianArrivalTime,
-                    norwegianDefaultArrival: norwegianDefaultArrivalTime,
-                    arrivalDelay: arrivalDelay,
-                    departure: location.departure,
-                    defaultDeparture: defaultDeparture.toJSDate(),
-                    norwegianDeparture: norwegianDepartureTime,
-                    norwegianDefaultDeparture: norwegianDefaultDepartureTime,
-                    departureDelay: departureDelay,
-                    fullRoute: train.currentRoute
-                };
+                newLocationsArrivals[location.code][train.trainNumber] = stationData;
             }
-
             if (!isLast) {
-                newLocationsDepartures[location.code][train.trainNumber] = {
-                    trainNumber: train.trainNumber,
-                    operator: train.operator,
-                    extraTrain: train.extraTrain,
-                    routeNumber: train.routeNumber,
-                    type: location.type,
-                    stopType: location.stopType,
-                    hasPassed: location.passed,
-                    isCancelledAtStation: location.cancelledAtStation,
-                    track: location.track,
-                    defaultTrack: train.defaultRoute[index].track,
-                    arrival: location.arrival,
-                    defaultArrival: defaultArrival.toJSDate(),
-                    norwegianArrival: norwegianArrivalTime,
-                    norwegianDefaultArrival: norwegianDefaultArrivalTime,
-                    arrivalDelay: arrivalDelay,
-                    departure: location.departure,
-                    defaultDeparture: defaultDeparture.toJSDate(),
-                    norwegianDeparture: norwegianDepartureTime,
-                    norwegianDefaultDeparture: norwegianDefaultDepartureTime,
-                    departureDelay: departureDelay,
-                    fullRoute: train.currentRoute
-                };
-            };
-        });
-    });
-            
-    // Sort the trains at each location by arrival time
+                newLocationsDepartures[location.code][train.trainNumber] = stationData;
+            }
+        }
+
+        modifiedTrains.push(train);
+    }
+
+    // Save all modified trains in parallel
+    await Promise.all(modifiedTrains.map(train => train.save()));
+
+    // Sort arrivals
     Object.keys(newLocationsArrivals).forEach(location => {
         newLocationsArrivals[location] = Object.values(newLocationsArrivals[location]).sort((a, b) => a.defaultArrival - b.defaultArrival);
     });
 
-    // Sort the trains at each location by departure time
+    // Sort departures
     Object.keys(newLocationsDepartures).forEach(location => {
         newLocationsDepartures[location] = Object.values(newLocationsDepartures[location]).sort((a, b) => a.defaultDeparture - b.defaultDeparture);
     });
 
-    // Update locations with new data
-    Object.keys(locationsArrivals).forEach(key => delete locationsArrivals[key]); // Clear existing data
-    Object.assign(locationsArrivals, newLocationsArrivals); // Copy new data into existing object
+    // Update the global objects
+    Object.keys(locationsArrivals).forEach(key => delete locationsArrivals[key]);
+    Object.assign(locationsArrivals, newLocationsArrivals);
 
-    Object.keys(locationsDepartures).forEach(key => delete locationsDepartures[key]); // Clear existing data
-    Object.assign(locationsDepartures, newLocationsDepartures); // Copy new data into existing object
+    Object.keys(locationsDepartures).forEach(key => delete locationsDepartures[key]);
+    Object.assign(locationsDepartures, newLocationsDepartures);
 }
 
 // Every 40th second of every minute
