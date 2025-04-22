@@ -28,6 +28,18 @@ const locationsDepartures = {
     KLH: []
 };
 
+const locationNames = {
+    RUS: 'Rustfjelbma',
+    IST: 'Inso tømmer A/S sidespor',
+    MAS: 'Masjok',
+    RSK: 'Ruskka A/S sidespor',
+    SK: 'Skogviken',
+    SIG: 'Skiippagurra',
+    SIP: 'Skiippagurra-Sletta',
+    VBT: 'Varangerbotn',
+    KLH: 'Kirkenes Lufthavn Høybuktmoen' 
+}
+
 async function isRailwayActive() {
     const allServers = await servers.find({}).exec();
     let activeRailwayWorkers = 0;
@@ -94,6 +106,17 @@ async function updateLocations() {
 
     const newLocationsArrivals = { RUS: [], IST: [], MAS: [], RSK: [], SK: [], SIG: [], SIP: [], VBT: [], KLH: [] };
     const newLocationsDepartures = { RUS: [], IST: [], MAS: [], RSK: [], SK: [], SIG: [], SIP: [], VBT: [], KLH: [] };
+    const newLocationNames = {
+        RUS: 'Rustfjelbma',
+        IST: 'Inso tømmer A/S sidespor',
+        MAS: 'Masjok',
+        RSK: 'Ruskka A/S sidespor',
+        SK: 'Skogviken',
+        SIG: 'Skiippagurra',
+        SIP: 'Skiippagurra-Sletta',
+        VBT: 'Varangerbotn',
+        KLH: 'Kirkenes Lufthavn Høybuktmoen' 
+    };
 
     const isRailwayActiveNow = await isRailwayActive();
     const modifiedTrains = [];
@@ -113,6 +136,7 @@ async function updateLocations() {
 
             if (!newLocationsArrivals[location.code]) newLocationsArrivals[location.code] = {};
             if (!newLocationsDepartures[location.code]) newLocationsDepartures[location.code] = {};
+            if (!newLocationNames[location.code]) newLocationNames[location.code] = location.name;
 
             if (!location.passed && location.departure < new Date()) {
                 location.departure = new Date().setSeconds(0,0);
@@ -194,6 +218,9 @@ async function updateLocations() {
 
     Object.keys(locationsDepartures).forEach(key => delete locationsDepartures[key]);
     Object.assign(locationsDepartures, newLocationsDepartures);
+
+    Object.keys(locationNames).forEach(key => delete locationNames[key]);
+    Object.assign(locationNames, newLocationNames);
 }
 
 // Every 40th second of every minute
@@ -201,5 +228,5 @@ const locationUpdateTimer = new CronJob('40 * * * * *', updateLocations, null, f
 updateLocations();
 
 
-module.exports = { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, updateLocations };
+module.exports = { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations };
 

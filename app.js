@@ -5,7 +5,7 @@ const cors = require('cors');
 const { DateTime } = require('luxon');
 const trains = require('./utils/train');
 const servers = require('./utils/server');
-const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, updateLocations } = require('./timers');
+const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations } = require('./timers');
 const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers'); // Modularized helpers
 
 const app = express();
@@ -385,6 +385,11 @@ app.get('/locations/:stationCode/departures', (req, res) => {
     if (!locationsDepartures[stationCode]) return res.status(404).json({ error: 'Station not found or no trains' });
 
     res.json(locationsDepartures[stationCode]);
+});
+
+// Fetch all locationNames
+app.get('/locations', (req, res) => {
+    res.status(200).json(locationNames);
 });
 
 // Force update locations method
