@@ -117,13 +117,13 @@ async function updateLocations() {
 
     const isRailwayActiveNow = await isRailwayActive();
     
-    allTrains.forEach(train => {
+    allTrains.forEach(async train => {
         if (!isRailwayActiveNow || !(train.currentRoute[0].arrival > new Date())) {
             train.currentRoute.forEach(location => {
                 location.cancelledAtStation = true; // Mark the train as cancelled at the station
             });
             train.markModified('currentRoute'); // Mark the currentRoute field as modified
-            train.save(); // Save the changes to the train document              
+            await train.save(); // Save the changes to the train document              
         };
 
         train.currentRoute.forEach(location => {
