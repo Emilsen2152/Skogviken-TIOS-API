@@ -5,7 +5,7 @@ const cors = require('cors');
 const { DateTime } = require('luxon');
 const trains = require('./utils/train');
 const servers = require('./utils/server');
-const { dayTimer, fiveMinutesTimer, locationsArrivals, locationsDepartures, updateLocations } = require('./timers');
+const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, updateLocations } = require('./timers');
 const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers'); // Modularized helpers
 
 const app = express();
@@ -440,4 +440,4 @@ app.delete('/servers/:jobId', checkApiKey, async (req, res) => {
 
 // Start timers
 dayTimer.start();
-fiveMinutesTimer.start();
+locationUpdateTimer.start();

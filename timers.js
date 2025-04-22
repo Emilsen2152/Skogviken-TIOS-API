@@ -134,6 +134,12 @@ async function updateLocations() {
                 newLocationsDepartures[location.code] = {}; // Fix: Initialize station code if it doesn’t exist
             }
 
+            if (!location.passed) {
+                if (location.departure < new Date()) {
+                    location.departure = new Date().setSeconds(0,0); // Set departure time to now if it has not passed, automatic delay
+                }
+            }
+
             //Convert times to Norwegian time
             const norwegianArrival = DateTime.fromJSDate(location.arrival, { zone: 'UTC' }).setZone('Europe/Oslo');
             const norwegianDeparture = DateTime.fromJSDate(location.departure, { zone: 'UTC' }).setZone('Europe/Oslo');
@@ -148,8 +154,23 @@ async function updateLocations() {
             };
 
             const index = train.defaultRoute.findIndex(station => station.code === location.code);
-            const isLast = train.currentRoute.findIndex(station => station.code === location.code) === train.currentRoute.length - 1;
-            const isFirst = train.currentRoute.findIndex(station => station.code === location.code) === 0;
+            const currentIndex = train.currentRoute.findIndex(station => station.code === location.code);
+            const isLast = currentIndex === train.currentRoute.length - 1;
+            const isFirst = currentIndex === 0;
+
+            const isHoldeplass = location.type === 'holdeplass';
+
+            if (isHoldeplass) {
+                const lastLocation = train.currentRoute[currentIndex - 1];
+                if (lastLocation) {
+                    // check if location departure time has passed and it has passed last station
+                    if (location.departure < new Date() && lastLocation.passed) {
+                        location.passed = true; // Mark the location as passed
+                    } else {
+                        location.passed = false; // Mark the location as not passed
+                    };
+                };
+            };
 
             const defaultArrival = DateTime.fromObject({hour: train.defaultRoute[index].arrival.hours, minute: train.defaultRoute[index].arrival.minutes}, { zone: 'Europe/Oslo' });
             const defaultDeparture = DateTime.fromObject({hour: train.defaultRoute[index].departure.hours, minute: train.defaultRoute[index].departure.minutes}, { zone: 'Europe/Oslo' });
@@ -240,9 +261,9 @@ async function updateLocations() {
 }
 
 // Every 40th second of every minute
-const fiveMinutesTimer = new CronJob('40 * * * * *', updateLocations, null, false, 'Europe/Oslo');
+const locationUpdateTimer = new CronJob('40 * * * * *', updateLocations, null, false, 'Europe/Oslo');
 updateLocations();
 
 
-module.exports = { dayTimer, fiveMinutesTimer, locationsArrivals, locationsDepartures, updateLocations };
+module.exports = { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, updateLocations };
 
