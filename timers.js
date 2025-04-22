@@ -122,7 +122,7 @@ async function updateLocations() {
     const modifiedTrains = [];
 
     for (const train of allTrains) {
-        if (!isRailwayActiveNow || !(train.currentRoute[0].arrival > new Date())) {
+        if (!isRailwayActiveNow && !(train.currentRoute[0].arrival > new Date())) {
             train.currentRoute.forEach(location => {
                 location.cancelledAtStation = true;
             });
@@ -158,7 +158,7 @@ async function updateLocations() {
 
             if (isHoldeplass) {
                 const lastLocation = train.currentRoute[currentIndex - 1];
-                if (lastLocation && location.departure < new Date() && lastLocation.passed) {
+                if (lastLocation && location.departure < new Date() && lastLocation.passed && !lastLocation.cancelledAtStation && !location.cancelledAtStation) {
                     location.passed = true;
                     train.markModified('currentRoute');
                 }
