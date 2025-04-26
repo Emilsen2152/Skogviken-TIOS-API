@@ -139,7 +139,9 @@ async function updateLocations() {
             if (!newLocationNames[location.code]) newLocationNames[location.code] = location.name;
 
             if (!location.passed && location.departure < new Date()) {
-                location.departure = new Date().setSeconds(0,0);
+                const date = new Date();
+                date.setSeconds(0, 0);
+                location.departure = date;
                 train.markModified('currentRoute');
             }
 
