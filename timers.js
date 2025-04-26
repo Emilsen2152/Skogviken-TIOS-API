@@ -140,6 +140,16 @@ async function updateLocations() {
             const currentDate = new Date();
             currentDate.setSeconds(0, 0);
 
+            const isHoldeplass = location.type === 'holdeplass';
+
+            if (isHoldeplass) {
+                const lastLocation = train.currentRoute[currentIndex - 1];
+                if (lastLocation && location.departure < currentDate && lastLocation.passed && !lastLocation.cancelledAtStation && !location.cancelledAtStation) {
+                    location.passed = true;
+                    train.markModified('currentRoute');
+                }
+            }
+
             if (!location.passed && location.departure < currentDate) {
                 location.departure = currentDate;
                 train.markModified('currentRoute');
@@ -156,15 +166,6 @@ async function updateLocations() {
 
             const isFirst = currentIndex === 0;
             const isLast = currentIndex === train.currentRoute.length - 1;
-            const isHoldeplass = location.type === 'holdeplass';
-
-            if (isHoldeplass) {
-                const lastLocation = train.currentRoute[currentIndex - 1];
-                if (lastLocation && location.departure < currentDate && lastLocation.passed && !lastLocation.cancelledAtStation && !location.cancelledAtStation) {
-                    location.passed = true;
-                    train.markModified('currentRoute');
-                }
-            }
 
             const stationData = {
                 trainNumber: train.trainNumber,
