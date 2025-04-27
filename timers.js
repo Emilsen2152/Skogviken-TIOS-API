@@ -37,7 +37,7 @@ const locationNames = {
     SIG: 'Skiippagurra',
     SIP: 'Skiippagurra-Sletta',
     VBT: 'Varangerbotn',
-    KLH: 'Kirkenes Lufthavn Høybuktmoen' 
+    KLH: 'Kirkenes Lufthavn Høybuktmoen'
 }
 
 async function isRailwayActive() {
@@ -115,7 +115,7 @@ async function updateLocations() {
         SIG: 'Skiippagurra',
         SIP: 'Skiippagurra-Sletta',
         VBT: 'Varangerbotn',
-        KLH: 'Kirkenes Lufthavn Høybuktmoen' 
+        KLH: 'Kirkenes Lufthavn Høybuktmoen'
     };
 
     const isRailwayActiveNow = await isRailwayActive();
@@ -143,13 +143,19 @@ async function updateLocations() {
             const isHoldeplass = location.type === 'holdeplass';
 
             if (isHoldeplass) {
-                const lastLocation = train.currentRoute[currentIndex - 1];
-                if (lastLocation && location.departure < currentDate && lastLocation.passed && !lastLocation.cancelledAtStation && !location.cancelledAtStation) {
-                    location.passed = true;
-                    train.markModified('currentRoute');
+                // Ensure currentIndex is greater than 0 to access lastLocation
+                if (currentIndex > 0) {
+                    const lastLocation = train.currentRoute[currentIndex - 1];
+
+                    if (lastLocation && location.departure < currentDate && lastLocation.passed && !lastLocation.cancelledAtStation && !location.cancelledAtStation) {
+                        // Mark this location as passed
+                        location.passed = true;
+                        train.markModified('currentRoute');
+                    }
                 }
             }
 
+            // Update departure time if necessary
             if (!location.passed && !location.cancelledAtStation && location.departure < currentDate) {
                 location.departure = currentDate;
                 train.markModified('currentRoute');
