@@ -27,7 +27,7 @@ const trainSchema = new Schema({
         required: true
     },
     currentFormation: {
-        type: Object,
+        type: Schema.Types.Mixed,
         default: {}
     },
     position: {
