@@ -68,6 +68,10 @@ app.post('/trains', checkApiKey, async (req, res) => {
         currentFormation = {};
     }
 
+    if (!routeNumber) {
+        routeNumber = "";
+    }
+
     try {
         const validationResult = validateRoute(defaultRoute);
         if (validationResult !== true) return res.status(400).json({ error: validationResult });
@@ -451,10 +455,10 @@ app.delete('/servers/:jobId', checkApiKey, async (req, res) => {
 dayTimer.start();
 locationUpdateTimer.start();
 
-const allTrain = trains.find({}).exec();
+const allTrain = await trains.find({}).exec();
 
-if (allTrain) {
-    allTrain.forEach(train => {
+if (allTrains) {
+    allTrains.forEach(train => {
         train.currentFormation = {};
 
         train.save();
