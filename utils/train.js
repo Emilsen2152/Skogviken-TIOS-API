@@ -27,14 +27,14 @@ const trainSchema = new Schema({
         required: true
     },
     currentFormation: {
-        type: Schema.Types.Mixed,
+        type: Object,
         default: {}
     },
     position: {
         type: Array, // Array of track areas
         default: []
     }
-});
+}, { minimize: false });
 
 module.exports = mongoose.model('Trains', trainSchema);
 
