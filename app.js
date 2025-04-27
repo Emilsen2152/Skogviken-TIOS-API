@@ -454,11 +454,3 @@ app.delete('/servers/:jobId', checkApiKey, async (req, res) => {
 // Start timers
 dayTimer.start();
 locationUpdateTimer.start();
-
-async function importantFix() {
-    trains.updateMany({}, { $set: { currentFormation: {} } }, { multi: true })
-        .then(() => console.log('Updated all trains currentFormation to empty array'))
-        .catch(err => console.error('Error updating trains:', err));
-}
-
-importantFix();
