@@ -185,7 +185,7 @@ app.get('/trains/:trainNumber/route/:locationCode/arrival/delay', async (req, re
             minutes: Number,
         },
         */
-        
+
         const arrivalHours = defaultLocation.arrival.hours;
         const arrivalMinutes = defaultLocation.arrival.minutes;
 
@@ -225,7 +225,7 @@ app.get('/trains/:trainNumber/route/:locationCode/departure/delay', async (req, 
             minutes: Number,
         },
         */
-        
+
         const departureHours = defaultLocation.departure.hours;
         const departureMinutes = defaultLocation.departure.minutes;
 
@@ -412,7 +412,7 @@ app.post('/locations', checkApiKey, async (req, res) => {
 
 app.post('/servers', checkApiKey, async (req, res) => {
     const { jobId } = req.body;
-    
+
     if (!jobId) return res.status(400).json({ error: 'Missing jobId' });
 
     const existingServer = await servers.findOne({ jobId }).exec();
@@ -455,12 +455,16 @@ app.delete('/servers/:jobId', checkApiKey, async (req, res) => {
 dayTimer.start();
 locationUpdateTimer.start();
 
-const allTrain = await trains.find({}).exec();
+async function importantFix() {
+    const allTrain = await trains.find({}).exec();
 
-if (allTrain) {
-    allTrain.forEach(train => {
-        train.currentFormation = {};
+    if (allTrain) {
+        allTrain.forEach(train => {
+            train.currentFormation = {};
 
-        train.save();
-    });
+            train.save();
+        });
+    }
 }
+
+importantFix();
