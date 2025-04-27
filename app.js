@@ -76,7 +76,7 @@ app.post('/trains', checkApiKey, async (req, res) => {
         const formationToAdd = currentFormation || {};
         const routeNumberToAdd = routeNumber || '';
 
-        const newTrain = new trains({ trainNumber, operator, extraTrain, defaultRoute, currentRoute, routeNumberToAdd, formationToAdd });
+        const newTrain = new trains({ trainNumber, operator, extraTrain, routeNumber: routeNumberToAdd, defaultRoute, currentRoute, currentFormation: formationToAdd });
         await newTrain.save();
         res.status(201).json(newTrain);
     } catch (error) {
