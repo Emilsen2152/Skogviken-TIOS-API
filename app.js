@@ -79,6 +79,8 @@ app.post('/trains', checkApiKey, async (req, res) => {
 
         const routeNumberToAdd = routeNumber || '';
 
+        console.log(formationToAdd, 'formationToAdd');
+
         const newTrain = new trains({ 
             trainNumber, 
             operator, 
