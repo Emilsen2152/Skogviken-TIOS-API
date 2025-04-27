@@ -155,6 +155,26 @@ app.patch('/trains/:trainNumber', checkApiKey, async (req, res) => {
     const { trainNumber } = req.params;
     const updates = req.body;
 
+    // Function to automatically convert string dates to Date objects
+    const convertStringDates = (data) => {
+        Object.keys(data).forEach(key => {
+            const value = data[key];
+            // Check if the value is a string that could represent a valid date
+            if (typeof value === 'string') {
+                const parsedDate = new Date(value);
+                if (!isNaN(parsedDate)) { // Valid date
+                    data[key] = parsedDate;
+                }
+            } else if (typeof value === 'object' && value !== null) {
+                // Recursively check if the value is an object (to handle nested objects)
+                convertStringDates(value);
+            }
+        });
+    };
+
+    // Convert any date fields in updates to Date objects
+    convertStringDates(updates);
+
     try {
         const updatedTrain = await trains.findOneAndUpdate(
             { trainNumber },
@@ -168,6 +188,7 @@ app.patch('/trains/:trainNumber', checkApiKey, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 
 app.get('/trains/:trainNumber/route/:locationCode/arrival/delay', async (req, res) => {
     const { trainNumber, locationCode } = req.params;
@@ -358,6 +379,26 @@ app.put('/trains/:trainNumber', checkApiKey, async (req, res) => {
     if (!hasAllProperties) {
         return res.status(400).json({ error: 'trainData must contain all required properties' });
     }
+
+    // Function to automatically convert string dates to Date objects
+    const convertStringDates = (data) => {
+        Object.keys(data).forEach(key => {
+            const value = data[key];
+            // Check if the value is a string that could represent a valid date
+            if (typeof value === 'string') {
+                const parsedDate = new Date(value);
+                if (!isNaN(parsedDate)) { // Valid date
+                    data[key] = parsedDate;
+                }
+            } else if (typeof value === 'object' && value !== null) {
+                // Recursively check if the value is an object (to handle nested objects)
+                convertStringDates(value);
+            }
+        });
+    };
+
+    // Convert any date fields in trainData to Date objects
+    convertStringDates(trainData);
 
     try {
         const updatedTrain = await trains.findOneAndUpdate(

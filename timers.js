@@ -143,29 +143,41 @@ async function updateLocations() {
             const isHoldeplass = location.type === 'holdeplass';
 
             if (isHoldeplass) {
-                // Ensure currentIndex is greater than 0 to access lastLocation
-                if (currentIndex > 0) {
-                    const lastLocation = train.currentRoute[currentIndex - 1];
-
-                    if (lastLocation && location.departure < currentDate && lastLocation.passed && !lastLocation.cancelledAtStation && !location.cancelledAtStation) {
-                        // Mark this location as passed
-                        location.passed = true;
-                        train.markModified('currentRoute');
-                    }
+                const lastLocation = train.currentRoute[currentIndex - 1];
+                if (lastLocation && location.departure < currentDate && lastLocation.passed && !lastLocation.cancelledAtStation && !location.cancelledAtStation) {
+                    location.passed = true;
+                    train.markModified('currentRoute');
                 }
             }
 
-            // Update departure time if necessary
             if (!location.passed && !location.cancelledAtStation && location.departure < currentDate) {
                 location.departure = currentDate;
                 train.markModified('currentRoute');
             }
 
+            // Ensure arrival and departure are valid date objects
+            if (!location.arrival || !location.departure) {
+                console.warn(`Missing arrival or departure time for location: ${location.code}`);
+                continue;
+            }
+
             const norwegianArrival = DateTime.fromJSDate(location.arrival, { zone: 'UTC' }).setZone('Europe/Oslo');
             const norwegianDeparture = DateTime.fromJSDate(location.departure, { zone: 'UTC' }).setZone('Europe/Oslo');
 
+            // Ensure both norwegianArrival and norwegianDeparture are valid
+            if (!norwegianArrival.isValid || !norwegianDeparture.isValid) {
+                console.error(`Invalid norwegianArrival or norwegianDeparture for train: ${train.trainNumber} at location: ${location.code}`);
+                continue;
+            }
+
             const defaultArrival = DateTime.fromObject(train.defaultRoute[index].arrival, { zone: 'Europe/Oslo' });
             const defaultDeparture = DateTime.fromObject(train.defaultRoute[index].departure, { zone: 'Europe/Oslo' });
+
+            // Ensure defaultArrival and defaultDeparture are valid
+            if (!defaultArrival.isValid || !defaultDeparture.isValid) {
+                console.error(`Invalid defaultArrival or defaultDeparture for train: ${train.trainNumber} at location: ${location.code}`);
+                continue;
+            }
 
             const arrivalDelay = (norwegianArrival.toMillis() - defaultArrival.toMillis()) / 60_000;
             const departureDelay = (norwegianDeparture.toMillis() - defaultDeparture.toMillis()) / 60_000;
@@ -231,6 +243,7 @@ async function updateLocations() {
     Object.keys(locationNames).forEach(key => delete locationNames[key]);
     Object.assign(locationNames, newLocationNames);
 }
+
 
 // Every 40th second of every minute
 const locationUpdateTimer = new CronJob('40 * * * * *', updateLocations, null, false, 'Europe/Oslo');
