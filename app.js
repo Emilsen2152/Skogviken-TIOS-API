@@ -58,7 +58,6 @@ app.get('/norwayTime/offset', checkApiKey, async (req, res) => {
 
 // Add a new train
 app.post('/trains', checkApiKey, async (req, res) => {
-    console.log('Request Body:', req.body); // Debugging log
     const { trainNumber, operator, defaultRoute, extraTrain, routeNumber, currentFormation } = req.body;
 
     if (!trainNumber || !operator || !defaultRoute || extraTrain === undefined) {
@@ -75,13 +74,25 @@ app.post('/trains', checkApiKey, async (req, res) => {
 
         const currentRoute = convertToUTC(defaultRoute);
 
-        const formationToAdd = currentFormation || {}; // Fallback to empty object if not provided
+        // If currentFormation is missing or undefined, set it to an empty object
+        const formationToAdd = currentFormation && typeof currentFormation === 'object' ? currentFormation : {};
+
         const routeNumberToAdd = routeNumber || '';
 
-        const newTrain = new trains({ trainNumber, operator, extraTrain, routeNumber: routeNumberToAdd, defaultRoute, currentRoute, currentFormation: formationToAdd });
+        const newTrain = new trains({ 
+            trainNumber, 
+            operator, 
+            extraTrain, 
+            routeNumber: routeNumberToAdd, 
+            defaultRoute, 
+            currentRoute, 
+            currentFormation: formationToAdd 
+        });
+
         await newTrain.save();
         res.status(201).json(newTrain);
     } catch (error) {
+        console.error('Error saving train:', error);
         res.status(500).json({ error: error.message });
     }
 });
