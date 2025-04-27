@@ -64,6 +64,10 @@ app.post('/trains', checkApiKey, async (req, res) => {
     }
     if (!Array.isArray(defaultRoute)) return res.status(400).json({ error: 'defaultRoute must be an array' });
 
+    if (!currentFormation) {
+        currentFormation = {};
+    }
+
     try {
         const validationResult = validateRoute(defaultRoute);
         if (validationResult !== true) return res.status(400).json({ error: validationResult });
@@ -446,3 +450,13 @@ app.delete('/servers/:jobId', checkApiKey, async (req, res) => {
 // Start timers
 dayTimer.start();
 locationUpdateTimer.start();
+
+const allTrain = trains.find({}).exec();
+
+if (allTrain) {
+    allTrain.forEach(train => {
+        train.currentFormation = {};
+
+        train.save();
+    });
+}
