@@ -150,7 +150,7 @@ async function updateLocations() {
                 }
             }
 
-            if (!location.passed && location.departure < currentDate) {
+            if (!location.passed && !location.cancelledAtStation && location.departure < currentDate) {
                 location.departure = currentDate;
                 train.markModified('currentRoute');
             }
