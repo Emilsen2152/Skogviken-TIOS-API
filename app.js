@@ -456,57 +456,9 @@ dayTimer.start();
 locationUpdateTimer.start();
 
 async function importantFix() {
-    trains.updateMany({}, { $set: { currentFormation: [] } }, { multi: true })
+    trains.updateMany({}, { $set: { currentFormation: {} } }, { multi: true })
         .then(() => console.log('Updated all trains currentFormation to empty array'))
         .catch(err => console.error('Error updating trains:', err));
-
-    const allTrains = await trains.find({});
-    
-        for (const train of allTrains) {
-            if (train.extraTrain) {
-                await train.deleteOne();
-            } else {
-                train.currentRoute = train.defaultRoute.map(station => {
-                    const {
-                        name,
-                        code,
-                        type,
-                        track,
-                        arrival,
-                        departure,
-                        stopType,
-                        passed,
-                        cancelledAtStation
-                    } = station;
-    
-                    // Convert Oslo time to UTC using Luxon
-                    const arrivalUTC = DateTime.fromObject(
-                        { hour: arrival.hours, minute: arrival.minutes },
-                        { zone: 'Europe/Oslo' }
-                    ).toUTC().toJSDate();
-    
-                    const departureUTC = DateTime.fromObject(
-                        { hour: departure.hours, minute: departure.minutes },
-                        { zone: 'Europe/Oslo' }
-                    ).toUTC().toJSDate();
-    
-                    return {
-                        name,
-                        code,
-                        type,
-                        track,
-                        arrival: arrivalUTC,
-                        departure: departureUTC,
-                        stopType,
-                        passed,
-                        cancelledAtStation
-                    };
-                });
-    
-                train.currentFormation = {};
-                await train.save();
-            }
-        }
 }
 
 importantFix();
