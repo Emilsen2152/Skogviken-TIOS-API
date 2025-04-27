@@ -58,7 +58,9 @@ app.get('/norwayTime/offset', checkApiKey, async (req, res) => {
 
 // Add a new train
 app.post('/trains', checkApiKey, async (req, res) => {
+    console.log('Request Body:', req.body); // Debugging log
     const { trainNumber, operator, defaultRoute, extraTrain, routeNumber, currentFormation } = req.body;
+
     if (!trainNumber || !operator || !defaultRoute || extraTrain === undefined) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -73,7 +75,7 @@ app.post('/trains', checkApiKey, async (req, res) => {
 
         const currentRoute = convertToUTC(defaultRoute);
 
-        const formationToAdd = currentFormation || {};
+        const formationToAdd = currentFormation || {}; // Fallback to empty object if not provided
         const routeNumberToAdd = routeNumber || '';
 
         const newTrain = new trains({ trainNumber, operator, extraTrain, routeNumber: routeNumberToAdd, defaultRoute, currentRoute, currentFormation: formationToAdd });
