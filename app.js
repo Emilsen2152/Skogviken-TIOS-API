@@ -457,8 +457,8 @@ locationUpdateTimer.start();
 
 const allTrain = await trains.find({}).exec();
 
-if (allTrains) {
-    allTrains.forEach(train => {
+if (allTrain) {
+    allTrain.forEach(train => {
         train.currentFormation = {};
 
         train.save();
