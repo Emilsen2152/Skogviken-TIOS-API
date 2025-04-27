@@ -456,15 +456,9 @@ dayTimer.start();
 locationUpdateTimer.start();
 
 async function importantFix() {
-    const allTrain = await trains.find({}).exec();
-
-    if (allTrain) {
-        allTrain.forEach(train => {
-            train.currentFormation = {};
-
-            train.save();
-        });
-    }
+    trains.updateMany({}, { $set: { currentRoute: [] } }, { multi: true })
+        .then(() => console.log('Updated all trains currentRoute to empty array'))
+        .catch(err => console.error('Error updating trains:', err));
 }
 
 importantFix();
