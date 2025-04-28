@@ -144,12 +144,11 @@ async function updateLocations() {
 
             if (isHoldeplass) {
                 const lastLocation = train.currentRoute[currentIndex - 1];
-                if (lastLocation && location.departure < currentDate && lastLocation.passed && !lastLocation.cancelledAtStation && !location.cancelledAtStation) {
+                if (lastLocation && lastLocation.passed && !location.passed && !location.cancelledAtStation && location.departure <= currentDate) {
                     location.passed = true;
                     train.markModified('currentRoute');
                 }
             }
-
             if (!location.passed && !location.cancelledAtStation && location.departure < currentDate) {
                 location.departure = currentDate;
                 train.markModified('currentRoute');
