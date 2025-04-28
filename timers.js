@@ -154,12 +154,6 @@ async function updateLocations() {
                 train.markModified('currentRoute');
             }
 
-            // Ensure arrival and departure are valid date objects
-            if (!location.arrival || !location.departure) {
-                console.warn(`Missing arrival or departure time for location: ${location.code}`);
-                continue;
-            }
-
             const norwegianArrival = DateTime.fromJSDate(location.arrival, { zone: 'UTC' }).setZone('Europe/Oslo');
             const norwegianDeparture = DateTime.fromJSDate(location.departure, { zone: 'UTC' }).setZone('Europe/Oslo');
 
