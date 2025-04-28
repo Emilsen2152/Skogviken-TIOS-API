@@ -17,8 +17,28 @@ const PORT = process.env.PORT || 80;
 function convertDates(obj) {
     for (const key in obj) {
         const value = obj[key];
-        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}[+-]\d{2}:\d{2}$/.test(value)) {
-            obj[key] = new Date(value);
+
+        // Check if the value is a string that matches any of the common date formats
+        if (typeof value === 'string') {
+            let date = DateTime.fromISO(value); // Try ISO format first
+
+            // If it's not a valid ISO format, try other formats
+            if (!date.isValid) {
+                date = DateTime.fromFormat(value, 'yyyy-MM-dd HH:mm:ss'); // "YYYY-MM-DD HH:mm:ss"
+            }
+
+            if (!date.isValid) {
+                date = DateTime.fromFormat(value, 'yyyy/MM/dd HH:mm:ss'); // "YYYY/MM/DD HH:mm:ss"
+            }
+
+            if (!date.isValid) {
+                date = DateTime.fromFormat(value, 'yyyy-MM-dd'); // "YYYY-MM-DD"
+            }
+
+            // If we have a valid date, convert to JavaScript Date object
+            if (date.isValid) {
+                obj[key] = date.toJSDate(); // Convert to JavaScript Date
+            }
         } else if (typeof value === 'object' && value !== null) {
             convertDates(value); // Recursively check nested objects
         }
