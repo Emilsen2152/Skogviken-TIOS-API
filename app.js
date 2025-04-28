@@ -158,22 +158,29 @@ app.patch('/trains/:trainNumber', checkApiKey, async (req, res) => {
     // Function to automatically convert string dates inside specific nested fields
     const convertStringDates = (data) => {
         if (!data.currentRoute) return;
-
-        const fieldsToCheck = ['arrival', 'departure'];
-
-        fieldsToCheck.forEach(field => {
-            if (data.currentRoute[field] && typeof data.currentRoute[field] === 'object') {
-                Object.keys(data.currentRoute[field]).forEach(key => {
-                    const value = data.currentRoute[field][key];
-                    if (typeof value === 'string') {
-                        const parsedDate = new Date(value);
-                        if (!isNaN(parsedDate)) {
-                            data.currentRoute[field][key] = parsedDate;
-                        }
+    
+        const recursivelyConvert = (obj) => {
+            if (typeof obj !== 'object' || obj === null) return;
+    
+            Object.keys(obj).forEach(key => {
+                const value = obj[key];
+    
+                // If key is 'arrival' or 'departure' and value is a string, convert it
+                if ((key === 'arrival' || key === 'departure') && typeof value === 'string') {
+                    const parsedDate = new Date(value);
+                    if (!isNaN(parsedDate)) {
+                        obj[key] = parsedDate;
                     }
-                });
-            }
-        });
+                }
+    
+                // If the value itself is an object, keep going deeper
+                if (typeof value === 'object' && value !== null) {
+                    recursivelyConvert(value);
+                }
+            });
+        };
+    
+        recursivelyConvert(data.currentRoute);
     };
 
     // Convert date fields only in currentRoute.arrival and currentRoute.departure
@@ -385,21 +392,22 @@ app.put('/trains/:trainNumber', checkApiKey, async (req, res) => {
 
     // Function to automatically convert string dates inside specific nested fields
     const convertStringDates = (data) => {
-        if (!data.currentRoute) return;
-
-        const fieldsToCheck = ['arrival', 'departure'];
-
-        fieldsToCheck.forEach(field => {
-            if (data.currentRoute[field] && typeof data.currentRoute[field] === 'object') {
-                Object.keys(data.currentRoute[field]).forEach(key => {
-                    const value = data.currentRoute[field][key];
-                    if (typeof value === 'string') {
-                        const parsedDate = new Date(value);
-                        if (!isNaN(parsedDate)) {
-                            data.currentRoute[field][key] = parsedDate;
-                        }
-                    }
-                });
+        if (typeof data !== 'object' || data === null) return;
+    
+        Object.keys(data).forEach(key => {
+            const value = data[key];
+    
+            // If the key is 'arrival' or 'departure' and the value is a string, try to convert it
+            if ((key === 'arrival' || key === 'departure') && typeof value === 'string') {
+                const parsedDate = new Date(value);
+                if (!isNaN(parsedDate)) {
+                    data[key] = parsedDate;
+                }
+            }
+    
+            // If the value is an object, recurse into it
+            if (typeof value === 'object' && value !== null) {
+                convertStringDates(value);
             }
         });
     };
