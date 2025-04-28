@@ -5,6 +5,13 @@ const { DateTime } = require('luxon');
 
 console.log('Timers are running...');
 
+const clockControlledLocations = [
+    'RUS', // Rustfjelbma
+    'IST', // Inso tømmer A/S sidespor
+    'MAS', // Masjok
+    'RKS', // Ruskka A/S sidespor
+];
+
 const locationsArrivals = {
     RUS: [],
     IST: [],
@@ -149,6 +156,14 @@ async function updateLocations() {
                     train.markModified('currentRoute');
                 }
             }
+
+            const isClockControlled = clockControlledLocations.includes(location.code);
+
+            if (isClockControlled && !location.passed && !location.cancelledAtStation && location.departure <= currentDate) {
+                location.passed = true;
+                train.markModified('currentRoute');
+            }
+
             if (!location.passed && !location.cancelledAtStation && location.departure < currentDate) {
                 location.departure = currentDate;
                 train.markModified('currentRoute');
