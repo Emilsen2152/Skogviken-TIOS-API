@@ -5,6 +5,13 @@ const { DateTime } = require('luxon');
 
 console.log('Timers are running...');
 
+const clockControlledLocations = [
+    'RUS', // Rustfjelbma
+    'IST', // Inso tømmer A/S sidespor
+    'MAS', // Masjok
+    'RKS', // Ruskka A/S sidespor
+];
+
 const locationsArrivals = {
     RUS: [],
     IST: [],
@@ -144,21 +151,22 @@ async function updateLocations() {
 
             if (isHoldeplass) {
                 const lastLocation = train.currentRoute[currentIndex - 1];
-                if (lastLocation && location.departure < currentDate && lastLocation.passed && !lastLocation.cancelledAtStation && !location.cancelledAtStation) {
+                if (lastLocation && lastLocation.passed && !location.passed && !location.cancelledAtStation && location.departure <= currentDate) {
                     location.passed = true;
                     train.markModified('currentRoute');
                 }
             }
 
-            if (!location.passed && !location.cancelledAtStation && location.departure < currentDate) {
-                location.departure = currentDate;
+            const isClockControlled = clockControlledLocations.includes(location.code);
+
+            if (isClockControlled && !location.passed && !location.cancelledAtStation && location.departure <= currentDate) {
+                location.passed = true;
                 train.markModified('currentRoute');
             }
 
-            // Ensure arrival and departure are valid date objects
-            if (!location.arrival || !location.departure) {
-                console.warn(`Missing arrival or departure time for location: ${location.code}`);
-                continue;
+            if (!location.passed && !location.cancelledAtStation && location.departure < currentDate) {
+                location.departure = currentDate;
+                train.markModified('currentRoute');
             }
 
             const norwegianArrival = DateTime.fromJSDate(location.arrival, { zone: 'UTC' }).setZone('Europe/Oslo');
