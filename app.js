@@ -155,24 +155,28 @@ app.patch('/trains/:trainNumber', checkApiKey, async (req, res) => {
     const { trainNumber } = req.params;
     const updates = req.body;
 
-    // Function to automatically convert string dates to Date objects
+    // Function to automatically convert string dates inside specific nested fields
     const convertStringDates = (data) => {
-        Object.keys(data).forEach(key => {
-            const value = data[key];
-            // Check if the value is a string that could represent a valid date
-            if (typeof value === 'string') {
-                const parsedDate = new Date(value);
-                if (!isNaN(parsedDate)) { // Valid date
-                    data[key] = parsedDate;
-                }
-            } else if (typeof value === 'object' && value !== null) {
-                // Recursively check if the value is an object (to handle nested objects)
-                convertStringDates(value);
+        if (!data.currentRoute) return;
+
+        const fieldsToCheck = ['arrival', 'departure'];
+
+        fieldsToCheck.forEach(field => {
+            if (data.currentRoute[field] && typeof data.currentRoute[field] === 'object') {
+                Object.keys(data.currentRoute[field]).forEach(key => {
+                    const value = data.currentRoute[field][key];
+                    if (typeof value === 'string') {
+                        const parsedDate = new Date(value);
+                        if (!isNaN(parsedDate)) {
+                            data.currentRoute[field][key] = parsedDate;
+                        }
+                    }
+                });
             }
         });
     };
 
-    // Convert any date fields in updates to Date objects
+    // Convert date fields only in currentRoute.arrival and currentRoute.departure
     convertStringDates(updates);
 
     try {
@@ -188,7 +192,6 @@ app.patch('/trains/:trainNumber', checkApiKey, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-
 
 app.get('/trains/:trainNumber/route/:locationCode/arrival/delay', async (req, res) => {
     const { trainNumber, locationCode } = req.params;
@@ -380,24 +383,28 @@ app.put('/trains/:trainNumber', checkApiKey, async (req, res) => {
         return res.status(400).json({ error: 'trainData must contain all required properties' });
     }
 
-    // Function to automatically convert string dates to Date objects
+    // Function to automatically convert string dates inside specific nested fields
     const convertStringDates = (data) => {
-        Object.keys(data).forEach(key => {
-            const value = data[key];
-            // Check if the value is a string that could represent a valid date
-            if (typeof value === 'string') {
-                const parsedDate = new Date(value);
-                if (!isNaN(parsedDate)) { // Valid date
-                    data[key] = parsedDate;
-                }
-            } else if (typeof value === 'object' && value !== null) {
-                // Recursively check if the value is an object (to handle nested objects)
-                convertStringDates(value);
+        if (!data.currentRoute) return;
+
+        const fieldsToCheck = ['arrival', 'departure'];
+
+        fieldsToCheck.forEach(field => {
+            if (data.currentRoute[field] && typeof data.currentRoute[field] === 'object') {
+                Object.keys(data.currentRoute[field]).forEach(key => {
+                    const value = data.currentRoute[field][key];
+                    if (typeof value === 'string') {
+                        const parsedDate = new Date(value);
+                        if (!isNaN(parsedDate)) {
+                            data.currentRoute[field][key] = parsedDate;
+                        }
+                    }
+                });
             }
         });
     };
 
-    // Convert any date fields in trainData to Date objects
+    // Convert date fields only in currentRoute.arrival and currentRoute.departure
     convertStringDates(trainData);
 
     try {
@@ -412,6 +419,7 @@ app.put('/trains/:trainNumber', checkApiKey, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 
 // Delete a train
 app.delete('/trains/:trainNumber', checkApiKey, async (req, res) => {
