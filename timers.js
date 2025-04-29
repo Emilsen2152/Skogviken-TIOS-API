@@ -129,7 +129,7 @@ async function updateLocations() {
     const modifiedTrains = [];
 
     for (const train of allTrains) {
-        if (!isRailwayActiveNow && !(train.currentRoute[0].arrival > new Date())) {
+        if (!isRailwayActiveNow && !train.currentRoute[0].arrival > new Date() && !train.currentRoute[0].passed && !train.currentRoute[0].cancelledAtStation) {
             train.currentRoute.forEach(location => {
                 location.cancelledAtStation = true;
             });
