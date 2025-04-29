@@ -57,8 +57,7 @@ async function isRailwayActive() {
     return activeRailwayWorkers > 0;
 }
 
-// New day timer
-const dayTimer = new CronJob('0 0 0 * * *', async () => {
+async function dayReset() {
     const allTrains = await trains.find({});
 
     for (const train of allTrains) {
@@ -106,7 +105,10 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
             await train.save();
         }
     }
-}, null, false, 'Europe/Oslo');
+}
+
+// New day timer
+const dayTimer = new CronJob('0 0 0 * * *', dayReset, null, false, 'Europe/Oslo');
 
 async function updateLocations() {
     const allTrains = await trains.find({});
@@ -259,5 +261,5 @@ const locationUpdateTimer = new CronJob('40 * * * * *', updateLocations, null, f
 updateLocations();
 
 
-module.exports = { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations };
+module.exports = { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset };
 

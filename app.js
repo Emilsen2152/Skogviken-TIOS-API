@@ -5,7 +5,7 @@ const cors = require('cors');
 const { DateTime } = require('luxon');
 const trains = require('./utils/train');
 const servers = require('./utils/server');
-const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations } = require('./timers');
+const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset } = require('./timers');
 const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers'); // Modularized helpers
 
 const app = express();
@@ -449,6 +449,15 @@ app.post('/locations', checkApiKey, async (req, res) => {
     try {
         await updateLocations();
         res.status(200).json({ message: 'Locations updated' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/forceReset', checkApiKey, async (req, res) => {
+    try {
+        await dayReset();
+        res.status(200).json({ message: 'Day reset' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
