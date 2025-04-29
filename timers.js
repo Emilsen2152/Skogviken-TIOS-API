@@ -131,7 +131,13 @@ async function updateLocations() {
     const modifiedTrains = [];
 
     for (const train of allTrains) {
-        if (!isRailwayActiveNow && train.currentRoute[0].arrival > new Date() && train.currentRoute[0].passed === false && train.currentRoute[0].cancelledAtStation === false) {
+        if (
+            !isRailwayActiveNow &&
+            train.currentRoute.length > 0 &&
+            !train.currentRoute[0].passed &&
+            !train.currentRoute[0].cancelledAtStation &&
+            train.currentRoute[0].arrival.getTime() >= Date.now() - 60_000  // Allow 1 min leeway
+        ) {
             // If the railway is not active and the train has not passed the first station, mark all locations as cancelled
             train.currentRoute.forEach(location => {
                 location.cancelledAtStation = true;
