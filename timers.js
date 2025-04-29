@@ -136,7 +136,7 @@ async function updateLocations() {
             train.currentRoute.length > 0 &&
             !train.currentRoute[0].passed &&
             !train.currentRoute[0].cancelledAtStation &&
-            train.currentRoute[0].arrival.getTime() >= Date.now() - 60_000  // Allow 1 min leeway
+            train.currentRoute[0].arrival.getTime() < Date.now() // Allow 1 min leeway
         ) {
             // If the railway is not active and the train has not passed the first station, mark all locations as cancelled
             console.log(`Marking all locations as cancelled for train: ${train.trainNumber}`);
