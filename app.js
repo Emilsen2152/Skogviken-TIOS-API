@@ -5,7 +5,7 @@ const cors = require('cors');
 const { DateTime } = require('luxon');
 const trains = require('./utils/train');
 const servers = require('./utils/server');
-const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations } = require('./timers');
+const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset } = require('./timers');
 const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers'); // Modularized helpers
 
 const app = express();
@@ -13,6 +13,36 @@ app.use(express.json());
 app.use(cors());
 
 const PORT = process.env.PORT || 80;
+
+function convertDates(obj) {
+    for (const key in obj) {
+        const value = obj[key];
+
+        if (key === 'arrival' || key === 'departure') { // Only attempt conversion if key matches
+            if (typeof value === 'string') {
+                let date = DateTime.fromISO(value); // Try ISO format first
+
+                if (!date.isValid) {
+                    date = DateTime.fromFormat(value, 'yyyy-MM-dd HH:mm:ss'); // "YYYY-MM-DD HH:mm:ss"
+                }
+
+                if (!date.isValid) {
+                    date = DateTime.fromFormat(value, 'yyyy/MM/dd HH:mm:ss'); // "YYYY/MM/DD HH:mm:ss"
+                }
+
+                if (!date.isValid) {
+                    date = DateTime.fromFormat(value, 'yyyy-MM-dd'); // "YYYY-MM-DD"
+                }
+
+                if (date.isValid) {
+                    obj[key] = date.toJSDate(); // Convert to JavaScript Date
+                }
+            }
+        } else if (typeof value === 'object' && value !== null) {
+            convertDates(value); // Recursively check nested objects
+        }
+    }
+}
 
 // MongoDB connection
 (async () => {
@@ -155,25 +185,8 @@ app.patch('/trains/:trainNumber', checkApiKey, async (req, res) => {
     const { trainNumber } = req.params;
     const updates = req.body;
 
-    // Function to automatically convert string dates to Date objects
-    const convertStringDates = (data) => {
-        Object.keys(data).forEach(key => {
-            const value = data[key];
-            // Check if the value is a string that could represent a valid date
-            if (typeof value === 'string') {
-                const parsedDate = new Date(value);
-                if (!isNaN(parsedDate)) { // Valid date
-                    data[key] = parsedDate;
-                }
-            } else if (typeof value === 'object' && value !== null) {
-                // Recursively check if the value is an object (to handle nested objects)
-                convertStringDates(value);
-            }
-        });
-    };
-
-    // Convert any date fields in updates to Date objects
-    convertStringDates(updates);
+    // Convert ISO date strings to Date objects
+    convertDates(updates);
 
     try {
         const updatedTrain = await trains.findOneAndUpdate(
@@ -188,7 +201,6 @@ app.patch('/trains/:trainNumber', checkApiKey, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-
 
 app.get('/trains/:trainNumber/route/:locationCode/arrival/delay', async (req, res) => {
     const { trainNumber, locationCode } = req.params;
@@ -384,25 +396,8 @@ app.put('/trains/:trainNumber', checkApiKey, async (req, res) => {
         return res.status(400).json({ error: 'trainData must contain all required properties' });
     }
 
-    // Function to automatically convert string dates to Date objects
-    const convertStringDates = (data) => {
-        Object.keys(data).forEach(key => {
-            const value = data[key];
-            // Check if the value is a string that could represent a valid date
-            if (typeof value === 'string') {
-                const parsedDate = new Date(value);
-                if (!isNaN(parsedDate)) { // Valid date
-                    data[key] = parsedDate;
-                }
-            } else if (typeof value === 'object' && value !== null) {
-                // Recursively check if the value is an object (to handle nested objects)
-                convertStringDates(value);
-            }
-        });
-    };
-
-    // Convert any date fields in trainData to Date objects
-    convertStringDates(trainData);
+    // Convert ISO date strings to Date objects
+    convertDates(trainData);
 
     try {
         const updatedTrain = await trains.findOneAndUpdate(
@@ -458,6 +453,16 @@ app.post('/locations', checkApiKey, async (req, res) => {
     try {
         await updateLocations();
         res.status(200).json({ message: 'Locations updated' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/forceReset', checkApiKey, async (req, res) => {
+    try {
+        await dayReset();
+        await updateLocations();
+        res.status(200).json({ message: 'Day reset' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

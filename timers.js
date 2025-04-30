@@ -57,8 +57,7 @@ async function isRailwayActive() {
     return activeRailwayWorkers > 0;
 }
 
-// New day timer
-const dayTimer = new CronJob('0 0 0 * * *', async () => {
+async function dayReset() {
     const allTrains = await trains.find({});
 
     for (const train of allTrains) {
@@ -106,7 +105,10 @@ const dayTimer = new CronJob('0 0 0 * * *', async () => {
             await train.save();
         }
     }
-}, null, false, 'Europe/Oslo');
+}
+
+// New day timer
+const dayTimer = new CronJob('0 0 0 * * *', dayReset, null, false, 'Europe/Oslo');
 
 async function updateLocations() {
     const allTrains = await trains.find({});
@@ -129,7 +131,15 @@ async function updateLocations() {
     const modifiedTrains = [];
 
     for (const train of allTrains) {
-        if (!isRailwayActiveNow && !(train.currentRoute[0].arrival > new Date())) {
+        if (
+            !isRailwayActiveNow &&
+            train.currentRoute.length > 0 &&
+            !train.currentRoute[0].passed &&
+            !train.currentRoute[0].cancelledAtStation &&
+            train.currentRoute[0].arrival.getTime() < Date.now() // Allow 1 min leeway
+        ) {
+            // If the railway is not active and the train has not passed the first station, mark all locations as cancelled
+            console.log(`Marking all locations as cancelled for train: ${train.trainNumber}`);
             train.currentRoute.forEach(location => {
                 location.cancelledAtStation = true;
             });
@@ -258,5 +268,5 @@ const locationUpdateTimer = new CronJob('40 * * * * *', updateLocations, null, f
 updateLocations();
 
 
-module.exports = { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations };
+module.exports = { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset };
 
