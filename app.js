@@ -188,6 +188,11 @@ app.patch('/trains/:trainNumber', checkApiKey, async (req, res) => {
     // Convert ISO date strings to Date objects
     convertDates(updates);
 
+    if (updates.trainNumber !== undefined) {
+        const existingTrain = await trains.findOne({ trainNumber: updates.trainNumber }).exec();
+        if (existingTrain) return res.status(409).json({ error: 'Train number already exists' });
+    }
+
     try {
         const updatedTrain = await trains.findOneAndUpdate(
             { trainNumber },
@@ -388,11 +393,14 @@ app.put('/trains/:trainNumber', checkApiKey, async (req, res) => {
     const requiredProperties = ['trainNumber', 'operator', 'extraTrain', 'defaultRoute', 'currentRoute', 'currentFormation', 'position'];
     const hasAllProperties = requiredProperties.every(prop => trainData.hasOwnProperty(prop));
 
-    req.params.trainNumber !== trainData.trainNumber;
+    if (trainData.trainNumber !== req.params.trainNumber) {
+        const existingTrain = await trains.findOne({ trainNumber: trainData.trainNumber }).exec();
+        if (existingTrain) return res.status(409).json({ error: 'Train number already exists' });
+    };
 
     if (!hasAllProperties) {
         return res.status(400).json({ error: 'trainData must contain all required properties' });
-    }
+    };
 
     // Convert ISO date strings to Date objects
     convertDates(trainData);
