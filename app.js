@@ -376,6 +376,10 @@ app.put('/trains/:trainNumber', checkApiKey, async (req, res) => {
     const requiredProperties = ['trainNumber', 'operator', 'extraTrain', 'defaultRoute', 'currentRoute', 'currentFormation', 'position'];
     const hasAllProperties = requiredProperties.every(prop => trainData.hasOwnProperty(prop));
 
+    if (req.params.trainNumber !== trainData.trainNumber) {
+        return res.status(400).json({ error: 'trainNumber cannot be changed using put requests, delete the train and recreate it to do this.' });
+    };
+
     if (!hasAllProperties) {
         return res.status(400).json({ error: 'trainData must contain all required properties' });
     }
