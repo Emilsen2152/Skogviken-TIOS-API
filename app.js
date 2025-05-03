@@ -5,6 +5,7 @@ const cors = require('cors');
 const { DateTime } = require('luxon');
 const trains = require('./utils/train');
 const servers = require('./utils/server');
+const disruptions = require('./utils/disruptions');
 const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset } = require('./timers');
 const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers'); // Modularized helpers
 
@@ -512,6 +513,97 @@ app.delete('/servers/:jobId', checkApiKey, async (req, res) => {
 
     const deletedServer = await servers.findOneAndDelete({ jobId }).exec();
     if (!deletedServer) return res.status(404).json({ error: 'Server not found' });
+    res.status(204).send(); //.json({ message: 'Successfully deleted' });
+});
+
+app.post('/disruptions', checkApiKey, async (req, res) => {
+    const { messageName, stations, lines, trains, mainMessageAt, disruption, NOR, ENG, Start, End } = req.body;
+
+    if (!messageName || !stations || !lines || !trains || !mainMessageAt || !disruption || !NOR || !ENG || !Start || !End) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (!NOR.title || !NOR.description || !ENG.title || !ENG.description) {
+        return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
+    };
+
+    // Convert Start and End to Date objects using built-in Date constructor
+    const startDate = new Date(Start);
+    const endDate = new Date(End);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return res.status(400).json({ error: 'Invalid date format for Start or End' });
+    }
+
+    try {
+        const newDisruption = new disruptions({ messageName, stations, lines, trains, mainMessageAt, disruption, NOR, ENG, startDate, endDate });
+        await newDisruption.save();
+        res.status(201).json(newDisruption);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    };
+});
+
+app.put('/disruptions/:id', checkApiKey, async (req, res) => {
+    const { id } = req.params;
+    const newVersion = req.body;
+
+    const { messageName, stations, lines, trains, mainMessageAt, disruption, NOR, ENG, Start, End } = newVersion;
+    if (!messageName || !stations || !lines || !trains || !mainMessageAt || !disruption || !NOR || !ENG || !Start || !End) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (!NOR.title || !NOR.description || !ENG.title || !ENG.description) {
+        return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
+    };
+
+    // Convert Start and End to Date objects using built-in Date constructor
+    const startDate = new Date(Start);
+    const endDate = new Date(End);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return res.status(400).json({ error: 'Invalid date format for Start or End' });
+    }
+
+    try {
+        const updatedDisruption = await disruptions.findByIdAndUpdate(
+            id,
+            { $set: { messageName, stations, lines, trains, mainMessageAt, disruption, NOR, ENG, startDate, endDate } },
+            { new: true, runValidators: true }
+        ).exec();
+
+        if (!updatedDisruption) return res.status(404).json({ error: 'Disruption not found' });
+        res.status(200).json(updatedDisruption);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/disruptions/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const disruption = await disruptions.findById(id).exec();
+        if (!disruption) return res.status(404).json({ error: 'Disruption not found' });
+        res.json(disruption);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/disruptions', async (req, res) => {
+    try {
+        const allDisruptions = await disruptions.find().exec();
+        res.status(200).json(allDisruptions); // Will be an empty array if nothing is found
+    } catch (err) {
+        console.error('Error fetching disruptions:', err);
+        res.status(500).json({ error: 'Failed to fetch disruptions' });
+    }
+});
+
+app.delete('/disruptions/:id', checkApiKey, async (req, res) => {
+    const { id } = req.params;
+
+    const deletedDisruption = await disruptions.findByIdAndDelete(id).exec();
+    if (!deletedDisruption) return res.status(404).json({ error: 'Disruption not found' });
     res.status(204).send(); //.json({ message: 'Successfully deleted' });
 });
 
