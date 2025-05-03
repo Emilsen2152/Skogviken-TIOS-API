@@ -527,6 +527,12 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
         return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
     };
 
+    // Make sure the name is unique
+    const existingDisruption = await disruptions.findOne({ messageName }).exec();
+    if (existingDisruption) {
+        return res.status(409).json({ error: 'Disruption with this name already exists' });
+    }
+
     // Convert Start and End to Date objects using built-in Date constructor
     const startDate = new Date(Start);
     const endDate = new Date(End);
@@ -555,6 +561,12 @@ app.put('/disruptions/:id', checkApiKey, async (req, res) => {
     if (!NOR.title || !NOR.description || !ENG.title || !ENG.description) {
         return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
     };
+
+    // Make sure the name is unique
+    const existingDisruption = await disruptions.findOne({ messageName }).exec();
+    if (existingDisruption && existingDisruption._id.toString() !== id) {
+        return res.status(409).json({ error: 'Disruption with this name already exists' });
+    }
 
     // Convert Start and End to Date objects using built-in Date constructor
     const startDate = new Date(Start);
