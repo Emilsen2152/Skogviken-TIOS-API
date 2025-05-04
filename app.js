@@ -288,6 +288,39 @@ app.get('/trains/:trainNumber/route/:locationCode/departure/delay', async (req, 
     }
 });
 
+app.get('/trains/:trainNumber/generalDelay', async (req, res) => {
+    const { trainNumber } = req.params;
+
+    const train = await trains.findOne({ trainNumber }).exec();
+
+    if (!train) return res.status(404).json({ error: 'Train not found' });
+    if (train.currentRoute.length === 0) return res.status(404).json({ error: 'Train has no current route' });
+
+    let lastPassedStationIndex = 0;
+    for (let i = 0; i < train.currentRoute.length; i++) {
+        if (train.currentRoute[i].passed) {
+            lastPassedStationIndex = i;
+        } else {
+            break;
+        }
+    };
+
+    const lastPassedStation = train.currentRoute[lastPassedStationIndex];
+    if (!lastPassedStation) return res.status(404).json({ error: 'No passed stations found' });
+
+    // Get the departure delay for the last passed station
+    const lastPassedStationDeparture = DateTime.fromJSDate(lastPassedStation.departure).setZone('Europe/Oslo');
+    const defaultDepartureHours = lastPassedStation.departure.hours;
+    const defaultDepartureMinutes = lastPassedStation.departure.minutes;
+    const defaultDepartureTime = DateTime.fromObject({ hour: defaultDepartureHours, minute: defaultDepartureMinutes }, { zone: 'Europe/Oslo' }).toUTC().toJSDate();
+
+    const delay = Math.floor((lastPassedStationDeparture - defaultDepartureTime) / 60000); // Convert milliseconds to minutes
+    res.status(200).json({
+        delay: delay,
+        train: train,
+    });
+});
+
 // Apply delay to train
 app.patch('/trains/:trainNumber/delay', checkApiKey, async (req, res) => {
     const { trainNumber } = req.params;
