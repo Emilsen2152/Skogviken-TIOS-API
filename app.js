@@ -56,7 +56,11 @@ function convertDates(obj) {
 })();
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`Server is running on port ${PORT} for IPv4`);
+});
+
+app.listen(PORT, '::', () => {
+  console.log(`Server is running on port ${PORT} for IPv6`);
 });
 
 // Health check endpoint
