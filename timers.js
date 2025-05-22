@@ -18,7 +18,7 @@ const LOCATION_CODES = {
     KLH: 'Kirkenes Lufthavn Høybuktmoen'
 };
 
-const clockControlledLocations = ['RUS', 'IST', 'MAS', 'RKS'];
+const clockControlledLocations = ['RUS', 'IST', 'MAS', 'RSK'];
 
 const locationsArrivals = Object.fromEntries(Object.keys(LOCATION_CODES).map(k => [k, []]));
 const locationsDepartures = Object.fromEntries(Object.keys(LOCATION_CODES).map(k => [k, []]));
