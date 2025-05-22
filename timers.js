@@ -207,7 +207,6 @@ async function updateLocations() {
 }
 
 const locationUpdateTimer = new CronJob('40 * * * * *', updateLocations, null, false, 'Europe/Oslo');
-updateLocations();
 
 module.exports = {
     dayTimer,
