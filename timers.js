@@ -5,37 +5,8 @@ const { DateTime } = require('luxon');
 
 console.log('Timers are running...');
 
-const clockControlledLocations = [
-    'RUS', // Rustfjelbma
-    'IST', // Inso tømmer A/S sidespor
-    'MAS', // Masjok
-    'RKS', // Ruskka A/S sidespor
-];
-
-const locationsArrivals = {
-    RUS: [],
-    IST: [],
-    MAS: [],
-    RSK: [],
-    SK: [],
-    SIG: [],
-    SIP: [],
-    VBT: [],
-    KLH: []
-};
-const locationsDepartures = {
-    RUS: [],
-    IST: [],
-    MAS: [],
-    RSK: [],
-    SK: [],
-    SIG: [],
-    SIP: [],
-    VBT: [],
-    KLH: []
-};
-
-const locationNames = {
+// Location definitions
+const LOCATION_CODES = {
     RUS: 'Rustfjelbma',
     IST: 'Inso tømmer A/S sidespor',
     MAS: 'Masjok',
@@ -45,16 +16,17 @@ const locationNames = {
     SIP: 'Skiippagurra-Sletta',
     VBT: 'Varangerbotn',
     KLH: 'Kirkenes Lufthavn Høybuktmoen'
-}
+};
+
+const clockControlledLocations = ['RUS', 'IST', 'MAS', 'RKS'];
+
+const locationsArrivals = Object.fromEntries(Object.keys(LOCATION_CODES).map(k => [k, []]));
+const locationsDepartures = Object.fromEntries(Object.keys(LOCATION_CODES).map(k => [k, []]));
+const locationNames = { ...LOCATION_CODES };
 
 async function isRailwayActive() {
-    const allServers = await servers.find({}).exec();
-    let activeRailwayWorkers = 0;
-    allServers.forEach(server => {
-        activeRailwayWorkers += server.activeRailwayWorkers;
-    });
-
-    return activeRailwayWorkers > 0;
+    const allServers = await servers.find({}).lean().exec();
+    return allServers.reduce((acc, server) => acc + (server.activeRailwayWorkers || 0), 0) > 0;
 }
 
 async function dayReset() {
@@ -66,18 +38,10 @@ async function dayReset() {
         } else {
             train.currentRoute = train.defaultRoute.map(station => {
                 const {
-                    name,
-                    code,
-                    type,
-                    track,
-                    arrival,
-                    departure,
-                    stopType,
-                    passed,
-                    cancelledAtStation
+                    name, code, type, track, arrival, departure,
+                    stopType, passed, cancelledAtStation
                 } = station;
 
-                // Convert Oslo time to UTC using Luxon
                 const arrivalUTC = DateTime.fromObject(
                     { hour: arrival.hours, minute: arrival.minutes },
                     { zone: 'Europe/Oslo' }
@@ -89,10 +53,7 @@ async function dayReset() {
                 ).toUTC().toJSDate();
 
                 return {
-                    name,
-                    code,
-                    type,
-                    track,
+                    name, code, type, track,
                     arrival: arrivalUTC,
                     departure: departureUTC,
                     stopType,
@@ -107,101 +68,89 @@ async function dayReset() {
     }
 }
 
-// New day timer
 const dayTimer = new CronJob('0 0 0 * * *', dayReset, null, false, 'Europe/Oslo');
+
+function calculateDelay(actual, planned) {
+    return (actual.toMillis() - planned.toMillis()) / 60_000;
+}
 
 async function updateLocations() {
     const allTrains = await trains.find({});
-
-    const newLocationsArrivals = { RUS: [], IST: [], MAS: [], RSK: [], SK: [], SIG: [], SIP: [], VBT: [], KLH: [] };
-    const newLocationsDepartures = { RUS: [], IST: [], MAS: [], RSK: [], SK: [], SIG: [], SIP: [], VBT: [], KLH: [] };
-    const newLocationNames = {
-        RUS: 'Rustfjelbma',
-        IST: 'Inso tømmer A/S sidespor',
-        MAS: 'Masjok',
-        RSK: 'Ruskka A/S sidespor',
-        SK: 'Skogviken',
-        SIG: 'Skiippagurra',
-        SIP: 'Skiippagurra-Sletta',
-        VBT: 'Varangerbotn',
-        KLH: 'Kirkenes Lufthavn Høybuktmoen'
-    };
+    const newLocationsArrivals = Object.fromEntries(Object.keys(LOCATION_CODES).map(k => [k, {}]));
+    const newLocationsDepartures = Object.fromEntries(Object.keys(LOCATION_CODES).map(k => [k, {}]));
+    const newLocationNames = { ...LOCATION_CODES };
 
     const isRailwayActiveNow = await isRailwayActive();
+    const currentDate = new Date();
+    currentDate.setSeconds(0, 0);
+
     const modifiedTrains = [];
 
     for (const train of allTrains) {
+        let routeModified = false;
+
         if (
             !isRailwayActiveNow &&
             train.currentRoute.length > 0 &&
             !train.currentRoute[0].passed &&
             !train.currentRoute[0].cancelledAtStation &&
-            train.currentRoute[0].arrival.getTime() < Date.now() // Allow 1 min leeway
+            train.currentRoute[0].arrival.getTime() < Date.now()
         ) {
-            // If the railway is not active and the train has not passed the first station, mark all locations as cancelled
             console.log(`Marking all locations as cancelled for train: ${train.trainNumber}`);
             train.currentRoute.forEach(location => {
                 location.cancelledAtStation = true;
             });
-            train.markModified('currentRoute');
+            routeModified = true;
         }
 
         for (let currentIndex = 0; currentIndex < train.currentRoute.length; currentIndex++) {
             const location = train.currentRoute[currentIndex];
+            if (!location.arrival || !location.departure) continue;
+
             const index = train.defaultRoute.findIndex(station => station.code === location.code);
             if (index === -1) continue;
 
-            if (!newLocationsArrivals[location.code]) newLocationsArrivals[location.code] = {};
-            if (!newLocationsDepartures[location.code]) newLocationsDepartures[location.code] = {};
-            if (!newLocationNames[location.code]) newLocationNames[location.code] = location.name;
-            const currentDate = new Date();
-            currentDate.setSeconds(0, 0);
-
             const isHoldeplass = location.type === 'holdeplass';
+            const isClockControlled = clockControlledLocations.includes(location.code);
+            const isFirst = currentIndex === 0;
+            const isLast = currentIndex === train.currentRoute.length - 1;
 
             if (isHoldeplass) {
                 const lastLocation = train.currentRoute[currentIndex - 1];
                 if (lastLocation && lastLocation.passed && !location.passed && !location.cancelledAtStation && location.departure <= currentDate) {
                     location.passed = true;
-                    train.markModified('currentRoute');
+                    routeModified = true;
                 }
             }
 
-            const isClockControlled = clockControlledLocations.includes(location.code);
-
             if (isClockControlled && !location.passed && !location.cancelledAtStation && location.departure <= currentDate) {
                 location.passed = true;
-                train.markModified('currentRoute');
+                routeModified = true;
             }
 
             if (!location.passed && !location.cancelledAtStation && location.departure < currentDate) {
                 location.departure = currentDate;
-                train.markModified('currentRoute');
+                routeModified = true;
             }
 
             const norwegianArrival = DateTime.fromJSDate(location.arrival, { zone: 'UTC' }).setZone('Europe/Oslo');
             const norwegianDeparture = DateTime.fromJSDate(location.departure, { zone: 'UTC' }).setZone('Europe/Oslo');
 
-            // Ensure both norwegianArrival and norwegianDeparture are valid
             if (!norwegianArrival.isValid || !norwegianDeparture.isValid) {
-                console.error(`Invalid norwegianArrival or norwegianDeparture for train: ${train.trainNumber} at location: ${location.code}`);
+                console.error(`Invalid time for train: ${train.trainNumber} at ${location.code}`);
                 continue;
             }
 
             const defaultArrival = DateTime.fromObject(train.defaultRoute[index].arrival, { zone: 'Europe/Oslo' });
             const defaultDeparture = DateTime.fromObject(train.defaultRoute[index].departure, { zone: 'Europe/Oslo' });
 
-            // Ensure defaultArrival and defaultDeparture are valid
             if (!defaultArrival.isValid || !defaultDeparture.isValid) {
-                console.error(`Invalid defaultArrival or defaultDeparture for train: ${train.trainNumber} at location: ${location.code}`);
+                console.error(`Invalid default time for train: ${train.trainNumber} at ${location.code}`);
                 continue;
             }
 
-            const arrivalDelay = (norwegianArrival.toMillis() - defaultArrival.toMillis()) / 60_000;
-            const departureDelay = (norwegianDeparture.toMillis() - defaultDeparture.toMillis()) / 60_000;
-
-            const isFirst = currentIndex === 0;
-            const isLast = currentIndex === train.currentRoute.length - 1;
+            const arrivalDelay = calculateDelay(norwegianArrival, defaultArrival);
+            const departureDelay = calculateDelay(norwegianDeparture, defaultDeparture);
 
             const stationData = {
                 trainNumber: train.trainNumber,
@@ -227,31 +176,26 @@ async function updateLocations() {
                 fullRoute: train.currentRoute
             };
 
-            if (!isFirst) {
-                newLocationsArrivals[location.code][train.trainNumber] = stationData;
-            }
-            if (!isLast) {
-                newLocationsDepartures[location.code][train.trainNumber] = stationData;
-            }
+            if (!isFirst) newLocationsArrivals[location.code][train.trainNumber] = stationData;
+            if (!isLast) newLocationsDepartures[location.code][train.trainNumber] = stationData;
         }
 
-        modifiedTrains.push(train);
+        if (routeModified) {
+            train.markModified('currentRoute');
+            modifiedTrains.push(train);
+        }
     }
 
-    // Save all modified trains in parallel
     await Promise.all(modifiedTrains.map(train => train.save()));
 
-    // Sort arrivals
-    Object.keys(newLocationsArrivals).forEach(location => {
-        newLocationsArrivals[location] = Object.values(newLocationsArrivals[location]).sort((a, b) => a.defaultArrival - b.defaultArrival);
-    });
+    for (const [code, arrivals] of Object.entries(newLocationsArrivals)) {
+        newLocationsArrivals[code] = Object.values(arrivals).sort((a, b) => a.defaultArrival - b.defaultArrival);
+    }
 
-    // Sort departures
-    Object.keys(newLocationsDepartures).forEach(location => {
-        newLocationsDepartures[location] = Object.values(newLocationsDepartures[location]).sort((a, b) => a.defaultDeparture - b.defaultDeparture);
-    });
+    for (const [code, departures] of Object.entries(newLocationsDepartures)) {
+        newLocationsDepartures[code] = Object.values(departures).sort((a, b) => a.defaultDeparture - b.defaultDeparture);
+    }
 
-    // Update the global objects
     Object.keys(locationsArrivals).forEach(key => delete locationsArrivals[key]);
     Object.assign(locationsArrivals, newLocationsArrivals);
 
@@ -262,11 +206,15 @@ async function updateLocations() {
     Object.assign(locationNames, newLocationNames);
 }
 
-
-// Every 40th second of every minute
 const locationUpdateTimer = new CronJob('40 * * * * *', updateLocations, null, false, 'Europe/Oslo');
 updateLocations();
 
-
-module.exports = { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset };
-
+module.exports = {
+    dayTimer,
+    locationUpdateTimer,
+    locationsArrivals,
+    locationsDepartures,
+    locationNames,
+    updateLocations,
+    dayReset
+};
