@@ -12,6 +12,7 @@ const LOCATION_CODES = {
     MAS: 'Masjok',
     RSK: 'Ruskka A/S sidespor',
     SK: 'Skogviken',
+    DOV: 'Drifts og vedlikeholds base',
     SIG: 'Skiippagurra',
     SIP: 'Skiippagurra-Sletta',
     VBT: 'Varangerbotn',
