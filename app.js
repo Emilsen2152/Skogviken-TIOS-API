@@ -292,32 +292,52 @@ app.get('/trains/:trainNumber/generalDelay', async (req, res) => {
     const { trainNumber } = req.params;
 
     const train = await trains.findOne({ trainNumber }).exec();
-
     if (!train) return res.status(404).json({ error: 'Train not found' });
     if (train.currentRoute.length === 0) return res.status(404).json({ error: 'Train has no current route' });
 
-    let lastPassedStationIndex = 0;
+    // Find last passed station in the current route
+    let lastPassedStationIndex = -1;
     for (let i = 0; i < train.currentRoute.length; i++) {
         if (train.currentRoute[i].passed) {
             lastPassedStationIndex = i;
         } else {
             break;
         }
-    };
+    }
+
+    if (lastPassedStationIndex === -1) {
+        return res.status(404).json({ error: 'No passed stations found' });
+    }
 
     const lastPassedStation = train.currentRoute[lastPassedStationIndex];
-    if (!lastPassedStation) return res.status(404).json({ error: 'No passed stations found' });
 
-    // Get the departure delay for the last passed station
-    const lastPassedStationDeparture = DateTime.fromJSDate(lastPassedStation.departure).setZone('Europe/Oslo');
-    const defaultDepartureHours = lastPassedStation.departure.hours;
-    const defaultDepartureMinutes = lastPassedStation.departure.minutes;
-    const defaultDepartureTime = DateTime.fromObject({ hour: defaultDepartureHours, minute: defaultDepartureMinutes }, { zone: 'Europe/Oslo' }).toUTC().toJSDate();
+    // Find the matching scheduled stop from defaultRoute by station code
+    const scheduledStop = train.defaultRoute.find(
+        stop => stop.code === lastPassedStation.code
+    );
 
-    const delay = Math.floor((lastPassedStationDeparture - defaultDepartureTime) / 60000); // Convert milliseconds to minutes
+    if (!scheduledStop || !scheduledStop.departure) {
+        return res.status(500).json({ error: 'Scheduled stop not found or missing departure time' });
+    }
+
+    // Convert actual departure (JS Date) to Luxon DateTime in Europe/Oslo
+    const actualDeparture = DateTime.fromJSDate(new Date(lastPassedStation.departure)).setZone('Europe/Oslo');
+
+    // Convert scheduled time (hours/minutes) to Luxon DateTime on the same day as actualDeparture
+    const scheduledDeparture = DateTime.fromObject({
+        year: actualDeparture.year,
+        month: actualDeparture.month,
+        day: actualDeparture.day,
+        hour: scheduledStop.departure.hours,
+        minute: scheduledStop.departure.minutes
+    }, { zone: 'Europe/Oslo' });
+
+    // Calculate delay in minutes
+    const delay = Math.floor(actualDeparture.diff(scheduledDeparture, 'minutes').minutes);
+
     res.status(200).json({
-        delay: delay,
-        train: train,
+        delay,
+        train,
     });
 });
 
