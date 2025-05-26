@@ -165,15 +165,14 @@ async function updateLocations() {
         if (
             !isRailwayActiveNow &&
             train.currentRoute.length > 0 &&
-            !train.currentRoute[0].passed &&
-            !train.currentRoute[0].cancelledAtStation &&
             train.currentRoute[0].arrival.getTime() < Date.now()
         ) {
             console.log(`Marking all locations as cancelled for train: ${train.trainNumber}`);
             train.currentRoute.forEach(location => {
+                if (location.cancelledAtStation || location.passed) return;
                 location.cancelledAtStation = true;
+                routeModified = true;
             });
-            routeModified = true;
         }
 
         for (let currentIndex = 0; currentIndex < train.currentRoute.length; currentIndex++) {
