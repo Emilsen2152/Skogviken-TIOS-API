@@ -12,8 +12,8 @@ const LOCATION_CODES = {
     MAS: 'Masjok',
     RSK: 'Ruskka A/S sidespor',
     SK: 'Skogviken',
-    DOV: 'Drifts og vedlikeholds base',
     SIG: 'Skiippagurra',
+    DOV: 'Drifts og vedlikeholds base',
     SIP: 'Skiippagurra-Sletta',
     VBT: 'Varangerbotn',
     KLH: 'Kirkenes Lufthavn Høybuktmoen'
@@ -28,6 +28,39 @@ const locationNames = { ...LOCATION_CODES };
 async function isRailwayActive() {
     const allServers = await servers.find({}).lean().exec();
     return allServers.reduce((acc, server) => acc + (server.activeRailwayWorkers || 0), 0) > 0;
+}
+
+const autoCancelledStops = {
+    SIP: {
+        start: DateTime.fromObject(
+            { year: 2025, month: 5, day: 26, hour: 18, minute: 0 },
+            { zone: 'Europe/Oslo' }
+        ),
+        end: DateTime.fromObject(
+            { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
+            { zone: 'Europe/Oslo' }
+        )
+    },
+    VBT: {
+        start: DateTime.fromObject(
+            { year: 2025, month: 5, day: 26, hour: 18, minute: 0 },
+            { zone: 'Europe/Oslo' }
+        ),
+        end: DateTime.fromObject(
+            { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
+            { zone: 'Europe/Oslo' }
+        )
+    },
+    KLH: {
+        start: DateTime.fromObject(
+            { year: 2025, month: 5, day: 26, hour: 18, minute: 0 },
+            { zone: 'Europe/Oslo' }
+        ),
+        end: DateTime.fromObject(
+            { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
+            { zone: 'Europe/Oslo' }
+        )
+    }
 }
 
 async function dayReset() {
@@ -61,6 +94,18 @@ async function dayReset() {
                     passed,
                     cancelledAtStation
                 };
+            });
+
+            train.currentRoute.forEach(location => {
+                if (autoCancelledStops[location.code]) {
+                    const cancelStart = autoCancelledStops[location.code].start;
+                    const cancelEnd = autoCancelledStops[location.code].end;
+                    const departureTime = DateTime.fromJSDate(location.departure, { zone: 'Europe/Oslo' });
+
+                    if (departureTime >= cancelStart && departureTime <= cancelEnd) {
+                        location.cancelledAtStation = true;
+                    }
+                }
             });
 
             train.currentFormation = {};
