@@ -110,7 +110,7 @@ async function dayReset() {
                 };
             });
 
-            const currentRouteChanged = false;
+            let currentRouteChanged = false;
 
             train.currentRoute.forEach(location => {
                 const departureTime = DateTime.fromJSDate(location.departure).setZone('Europe/Oslo');
