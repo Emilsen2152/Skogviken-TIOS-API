@@ -110,6 +110,8 @@ async function dayReset() {
                 };
             });
 
+            const currentRouteChanged = false;
+
             train.currentRoute.forEach(location => {
                 const departureTime = DateTime.fromJSDate(location.departure).setZone('Europe/Oslo');
                 if (departureTime < DateTime.now().setZone('Europe/Oslo')) {
@@ -122,6 +124,7 @@ async function dayReset() {
 
                         if (departureTime >= cancelStart && departureTime <= cancelEnd) {
                             location.cancelledAtStation = true;
+                            currentRouteChanged = true;
                         }
                     };
                 } else if (autoCancelledStops[location.code]) {
@@ -133,9 +136,14 @@ async function dayReset() {
 
                     if (departureTime >= cancelStart && departureTime <= cancelEnd) {
                         location.cancelledAtStation = true;
+                        currentRouteChanged = true;
                     }
                 }
             });
+
+            if (currentRouteChanged) {
+                train.markModified('currentRoute');
+            };
 
             train.currentFormation = {};
             await train.save();
