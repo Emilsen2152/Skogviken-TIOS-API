@@ -31,6 +31,17 @@ async function isRailwayActive() {
 }
 
 const autoCancelledStops = {
+    SK: {
+        start: DateTime.fromObject(
+            { year: 2025, month: 5, day: 26, hour: 18, minute: 0 },
+            { zone: 'Europe/Oslo' }
+        ),
+        end: DateTime.fromObject(
+            { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
+            { zone: 'Europe/Oslo' }
+        ),
+        routes: ['RE80']
+    },
     SIP: {
         start: DateTime.fromObject(
             { year: 2025, month: 5, day: 26, hour: 18, minute: 0 },
@@ -39,7 +50,8 @@ const autoCancelledStops = {
         end: DateTime.fromObject(
             { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
-        )
+        ),
+        routes: ['RE80', 'R81']
     },
     VBT: {
         start: DateTime.fromObject(
@@ -49,7 +61,8 @@ const autoCancelledStops = {
         end: DateTime.fromObject(
             { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
-        )
+        ),
+        routes: ['RE80', 'R81']
     },
     KLH: {
         start: DateTime.fromObject(
@@ -59,7 +72,8 @@ const autoCancelledStops = {
         end: DateTime.fromObject(
             { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
-        )
+        ),
+        routes: ['RE80', 'R81']
     }
 }
 
@@ -97,7 +111,10 @@ async function dayReset() {
             });
 
             train.currentRoute.forEach(location => {
-                if (autoCancelledStops[location.code]) {
+                if (autoCancelledStops[location.code] ) {
+                    if (train.routeNumber != undefined && train.routeNumber != '' && !autoCancelledStops[location.code].routes.includes(train.routeNumber)) {
+                        return;
+                    }
                     const cancelStart = autoCancelledStops[location.code].start;
                     const cancelEnd = autoCancelledStops[location.code].end;
                     const departureTime = DateTime.fromJSDate(location.departure, { zone: 'Europe/Oslo' });
