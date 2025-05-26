@@ -117,7 +117,7 @@ async function dayReset() {
                     }
                     const cancelStart = autoCancelledStops[location.code].start;
                     const cancelEnd = autoCancelledStops[location.code].end;
-                    const departureTime = DateTime.fromJSDate(location.departure, { zone: 'Europe/Oslo' });
+                    const departureTime = DateTime.fromJSDate(location.departure).setZone('Europe/Oslo');
 
                     if (departureTime >= cancelStart && departureTime <= cancelEnd) {
                         location.cancelledAtStation = true;
