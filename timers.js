@@ -115,18 +115,8 @@ async function dayReset() {
             train.currentRoute.forEach(location => {
                 const departureTime = DateTime.fromJSDate(location.departure).setZone('Europe/Oslo');
                 if (departureTime < DateTime.now().setZone('Europe/Oslo')) {
-                    if (autoCancelledStops[location.code]) {
-                        if (train.routeNumber != undefined && train.routeNumber != '' && !autoCancelledStops[location.code].routes.includes(train.routeNumber)) {
-                            return;
-                        }
-                        const cancelStart = autoCancelledStops[location.code].start;
-                        const cancelEnd = autoCancelledStops[location.code].end;
-
-                        if (departureTime >= cancelStart && departureTime <= cancelEnd) {
-                            location.cancelledAtStation = true;
-                            currentRouteChanged = true;
-                        }
-                    };
+                    location.cancelledAtStation = true;
+                    currentRouteChanged = true;
                 } else if (autoCancelledStops[location.code]) {
                     if (train.routeNumber != undefined && train.routeNumber != '' && !autoCancelledStops[location.code].routes.includes(train.routeNumber)) {
                         return;
