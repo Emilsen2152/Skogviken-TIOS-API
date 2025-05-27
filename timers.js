@@ -40,7 +40,8 @@ const autoCancelledStops = {
             { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
-        routes: ['RE80']
+        routes: ['RE80'],
+        trains: ['']
     },
     SIP: {
         start: DateTime.fromObject(
@@ -51,7 +52,8 @@ const autoCancelledStops = {
             { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
-        routes: ['RE80', 'R81']
+        routes: ['RE80', 'R81'],
+        trains: ['']
     },
     VBT: {
         start: DateTime.fromObject(
@@ -62,7 +64,8 @@ const autoCancelledStops = {
             { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
-        routes: ['RE80', 'R81']
+        routes: ['RE80', 'R81'],
+        trains: ['']
     },
     KLH: {
         start: DateTime.fromObject(
@@ -73,7 +76,8 @@ const autoCancelledStops = {
             { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
-        routes: ['RE80', 'R81']
+        routes: ['RE80', 'R81'],
+        trains: ['']
     }
 }
 
@@ -118,7 +122,7 @@ async function dayReset() {
                     location.cancelledAtStation = true;
                     currentRouteChanged = true;
                 } else if (autoCancelledStops[location.code]) {
-                    if (train.routeNumber != undefined && train.routeNumber != '' && !autoCancelledStops[location.code].routes.includes(train.routeNumber)) {
+                    if (!autoCancelledStops[location.code].routes.includes(train.routeNumber) && !autoCancelledStops[location.code].trains.includes(train.trainNumber)) {
                         return;
                     }
                     const cancelStart = autoCancelledStops[location.code].start;
