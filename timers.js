@@ -41,7 +41,21 @@ const autoCancelledStops = {
             { zone: 'Europe/Oslo' }
         ),
         routes: ['RE80'],
-        trains: ['']
+        trains: ['91105', '91116'],
+        all: false
+    },
+    SIG: {
+        start: DateTime.fromObject(
+            { year: 2025, month: 5, day: 26, hour: 18, minute: 0 },
+            { zone: 'Europe/Oslo' }
+        ),
+        end: DateTime.fromObject(
+            { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
+            { zone: 'Europe/Oslo' }
+        ),
+        routes: ['RE80'],
+        trains: ['91105', '91116'],
+        all: false
     },
     SIP: {
         start: DateTime.fromObject(
@@ -52,8 +66,9 @@ const autoCancelledStops = {
             { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
-        routes: ['RE80', 'R81'],
-        trains: ['']
+        routes: [],
+        trains: [],
+        all: true
     },
     VBT: {
         start: DateTime.fromObject(
@@ -64,8 +79,9 @@ const autoCancelledStops = {
             { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
-        routes: ['RE80', 'R81'],
-        trains: ['']
+        routes: [],
+        trains: [],
+        all: true
     },
     KLH: {
         start: DateTime.fromObject(
@@ -76,8 +92,9 @@ const autoCancelledStops = {
             { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
-        routes: ['RE80', 'R81'],
-        trains: ['']
+        routes: [],
+        trains: [],
+        all: true
     }
 }
 
@@ -122,7 +139,7 @@ async function dayReset() {
                     location.cancelledAtStation = true;
                     currentRouteChanged = true;
                 } else if (autoCancelledStops[location.code]) {
-                    if (!autoCancelledStops[location.code].routes.includes(train.routeNumber) && !autoCancelledStops[location.code].trains.includes(train.trainNumber)) {
+                    if (!autoCancelledStops[location.code].routes.includes(train.routeNumber) && !autoCancelledStops[location.code].trains.includes(train.trainNumber) && !autoCancelledStops[location.code].all) {
                         return;
                     }
                     const cancelStart = autoCancelledStops[location.code].start;
