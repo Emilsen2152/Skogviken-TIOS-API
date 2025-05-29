@@ -38,11 +38,11 @@ const disruptions = new Schema({
         type: Object,
         required: true
     },
-    Start: {
+    startDate: {
         type: Object,
         required: true
     },
-    End: {
+    endDate: {
         type: Object,
         required: true
     }
