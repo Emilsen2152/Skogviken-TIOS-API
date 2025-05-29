@@ -26,6 +26,10 @@ const disruptions = new Schema({
         type: Boolean,
         required: true
     },
+    internalInfo: {
+        type: Object,
+        required: true
+    },
     NOR: {
         type: Object,
         required: true
