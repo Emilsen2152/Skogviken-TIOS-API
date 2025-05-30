@@ -684,7 +684,7 @@ app.post('/exportMessages', checkApiKey, async (req, res) => {
     const timestamp = Date.now();
     
     exportMessages[timestamp] = message;
-    res.status(201).json({ message: 'MessageId: ' + timestamp});
+    res.status(201).json({ message: 'MessageId: ' + timestamp.toString()});
 });
 
 // Every minute, delete messages with timestamp older than 3 minutes
