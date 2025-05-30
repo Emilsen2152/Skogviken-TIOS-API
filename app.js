@@ -573,76 +573,150 @@ app.delete('/servers/:jobId', checkApiKey, async (req, res) => {
 });
 
 app.post('/disruptions', checkApiKey, async (req, res) => {
-    const { messageName, stations, lines, trains, mainMessageAt, disruption, NOR, ENG, Start, End } = req.body;
+	const {
+		messageName,
+		stations,
+		lines,
+		mainMessageAt,
+		disruption,
+		internalInfo,
+		NOR,
+		ENG,
+		startDate,
+		endDate
+	} = req.body;
 
-    if (!messageName || !stations || !lines || !trains || !mainMessageAt || !disruption || !NOR || !ENG || !Start || !End) {
-        return res.status(400).json({ error: 'Missing required fields' });
-    }
+	// Validate required fields
+	if (!messageName || !stations || !lines || !mainMessageAt || typeof disruption !== "boolean" ||
+		!internalInfo || !NOR || !ENG || !startDate || !endDate) {
+		return res.status(400).json({ error: 'Missing required fields' });
+	}
 
-    if (!NOR.title || !NOR.description || !ENG.title || !ENG.description) {
-        return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
-    };
+	const { from, to, consequence, reason, action, forecast, nextUpdate } = internalInfo;
+	if (!from || !to || !consequence || !reason || !action || !forecast || !nextUpdate) {
+		return res.status(400).json({ error: 'Missing required internalInfo fields' });
+	}
 
-    // Make sure the name is unique
-    const existingDisruption = await disruptions.findOne({ messageName }).exec();
-    if (existingDisruption) {
-        return res.status(409).json({ error: 'Disruption with this name already exists' });
-    }
+	if (!NOR.Title || !NOR.Description || !ENG.Title || !ENG.Description) {
+		return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
+	}
 
-    // Convert Start and End to Date objects using built-in Date constructor
-    const startDate = new Date(Start);
-    const endDate = new Date(End);
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        return res.status(400).json({ error: 'Invalid date format for Start or End' });
-    }
+	const existingDisruption = await disruptions.findOne({ messageName }).exec();
+	if (existingDisruption) {
+		return res.status(409).json({ error: 'Disruption with this name already exists' });
+	}
 
-    try {
-        const newDisruption = new disruptions({ messageName, stations, lines, trains, mainMessageAt, disruption, NOR, ENG, startDate, endDate });
-        await newDisruption.save();
-        res.status(201).json(newDisruption);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    };
+	const start = new Date(startDate);
+	const end = new Date(endDate);
+	const next = new Date(nextUpdate);
+
+	if ([start, end, next].some(d => isNaN(d.getTime()))) {
+		return res.status(400).json({ error: 'Invalid date format in startDate, endDate, or internalInfo.nextUpdate' });
+	}
+
+	try {
+		const newDisruption = new disruptions({
+			messageName,
+			stations,
+			lines,
+			mainMessageAt,
+			disruption,
+			internalInfo: {
+				from,
+				to,
+				consequence,
+				reason,
+				action,
+				forecast,
+				nextUpdate: next
+			},
+			NOR,
+			ENG,
+			startDate: start,
+			endDate: end
+		});
+		await newDisruption.save();
+		res.status(201).json(newDisruption);
+	} catch (error) {
+		res.status(500).json({ error: error.message });
+	}
 });
 
 app.put('/disruptions/:id', checkApiKey, async (req, res) => {
-    const { id } = req.params;
-    const newVersion = req.body;
+	const { id } = req.params;
+	const {
+		messageName,
+		stations,
+		lines,
+		mainMessageAt,
+		disruption,
+		internalInfo,
+		NOR,
+		ENG,
+		startDate,
+		endDate
+	} = req.body;
 
-    const { messageName, stations, lines, trains, mainMessageAt, disruption, NOR, ENG, Start, End } = newVersion;
-    if (!messageName || !stations || !lines || !trains || !mainMessageAt || !disruption || !NOR || !ENG || !Start || !End) {
-        return res.status(400).json({ error: 'Missing required fields' });
-    }
+	if (!messageName || !stations || !lines || !mainMessageAt || typeof disruption !== "boolean" ||
+		!internalInfo || !NOR || !ENG || !startDate || !endDate) {
+		return res.status(400).json({ error: 'Missing required fields' });
+	}
 
-    if (!NOR.title || !NOR.description || !ENG.title || !ENG.description) {
-        return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
-    };
+	const { from, to, consequence, reason, action, forecast, nextUpdate } = internalInfo;
+	if (!from || !to || !consequence || !reason || !action || !forecast || !nextUpdate) {
+		return res.status(400).json({ error: 'Missing required internalInfo fields' });
+	}
 
-    // Make sure the name is unique
-    const existingDisruption = await disruptions.findOne({ messageName }).exec();
-    if (existingDisruption && existingDisruption._id.toString() !== id) {
-        return res.status(409).json({ error: 'Disruption with this name already exists' });
-    }
+	if (!NOR.Title || !NOR.Description || !ENG.Title || !ENG.Description) {
+		return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
+	}
 
-    // Convert Start and End to Date objects using built-in Date constructor
-    const startDate = new Date(Start);
-    const endDate = new Date(End);
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        return res.status(400).json({ error: 'Invalid date format for Start or End' });
-    }
+	const existingDisruption = await disruptions.findOne({ messageName }).exec();
+	if (existingDisruption && existingDisruption._id.toString() !== id) {
+		return res.status(409).json({ error: 'Disruption with this name already exists' });
+	}
 
-    try {
-        const updatedDisruption = await disruptions.findByIdAndUpdate(
-            id,
-            { $set: { messageName, stations, lines, trains, mainMessageAt, disruption, NOR, ENG, startDate, endDate } },
-            { new: true, runValidators: true }
-        ).exec();
+	const start = new Date(startDate);
+	const end = new Date(endDate);
+	const next = new Date(nextUpdate);
 
-        if (!updatedDisruption) return res.status(404).json({ error: 'Disruption not found' });
-        res.status(200).json(updatedDisruption);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+	if ([start, end, next].some(d => isNaN(d.getTime()))) {
+		return res.status(400).json({ error: 'Invalid date format in startDate, endDate, or internalInfo.nextUpdate' });
+	}
+
+	try {
+		const updatedDisruption = await disruptions.findByIdAndUpdate(
+			id,
+			{
+				$set: {
+					messageName,
+					stations,
+					lines,
+					mainMessageAt,
+					disruption,
+					internalInfo: {
+						from,
+						to,
+						consequence,
+						reason,
+						action,
+						forecast,
+						nextUpdate: next
+					},
+					NOR,
+					ENG,
+					startDate: start,
+					endDate: end
+				}
+			},
+			{ new: true, runValidators: true }
+		).exec();
+
+		if (!updatedDisruption) return res.status(404).json({ error: 'Disruption not found' });
+		res.status(200).json(updatedDisruption);
+	} catch (error) {
+		res.status(500).json({ error: error.message });
+	}
 });
 
 app.get('/disruptions/:id', async (req, res) => {
