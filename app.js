@@ -8,6 +8,9 @@ const servers = require('./utils/server');
 const disruptions = require('./utils/disruptions');
 const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset } = require('./timers');
 const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers'); // Modularized helpers
+const { CronJob } = require('cron');
+
+const exportMessages = {};
 
 const app = express();
 app.use(express.json());
@@ -672,6 +675,38 @@ app.delete('/disruptions/:id', checkApiKey, async (req, res) => {
     res.status(204).send(); //.json({ message: 'Successfully deleted' });
 });
 
+app.post('/exportMessages', checkApiKey, async (req, res) => {
+    const { message } = req.body;
+    if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: 'Invalid message format' });
+    }
+
+    const timestamp = Date.now();
+    
+    exportMessages[timestamp] = message;
+    res.status(201).json({ message: 'MessageId: ', timestamp });
+});
+
+// Every minute, delete messages with timestamp older than 3 minutes
+const cleanupCronJob = new CronJob('0 * * * * *', () => {
+    const now = Date.now();
+    for (const messageId in exportMessages) {
+        if (now - messageId > 3 * 60 * 1000) { // 3 minutes in milliseconds
+            delete exportMessages[messageId];
+        }
+    }
+});
+
+app.get('/exportMessages/:messageId', checkApiKey, (req, res) => {
+    const messageId = req.params.messageId;
+    if (!exportMessages[messageId]) {
+        return res.status(404).json({ error: 'Message not found', message: 'Message not found ' + messageId });
+    }
+
+    res.status(200).json({ message: exportMessages[messageId] });
+});
+
 // Start timers
 dayTimer.start();
 locationUpdateTimer.start();
+cleanupCronJob.start();
