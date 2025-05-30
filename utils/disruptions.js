@@ -14,10 +14,6 @@ const disruptions = new Schema({
         type: Array,
         required: true
     },
-    trains: {
-        type: Array,
-        required: true
-    },
     mainMessageAt: {
         type: Array,
         required: true
