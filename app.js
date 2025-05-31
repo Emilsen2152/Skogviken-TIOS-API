@@ -641,6 +641,8 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
 });
 
 app.put('/disruptions/:id', checkApiKey, async (req, res) => {
+    console.log("Received body for update:", req.body);
+
     const { id } = req.params;
     const {
         messageName,
