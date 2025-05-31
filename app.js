@@ -59,7 +59,7 @@ function convertDates(obj) {
 })();
 
 app.listen(PORT, '::', () => {
-  console.log(`Server is running on port ${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
 });
 
 // Health check endpoint
@@ -113,14 +113,14 @@ app.post('/trains', checkApiKey, async (req, res) => {
 
         const routeNumberToAdd = routeNumber || '';
 
-        const newTrain = new trains({ 
-            trainNumber, 
-            operator, 
-            extraTrain, 
-            routeNumber: routeNumberToAdd, 
-            defaultRoute, 
-            currentRoute, 
-            currentFormation: formationToAdd 
+        const newTrain = new trains({
+            trainNumber,
+            operator,
+            extraTrain,
+            routeNumber: routeNumberToAdd,
+            defaultRoute,
+            currentRoute,
+            currentFormation: formationToAdd
         });
 
         await newTrain.save();
@@ -573,147 +573,147 @@ app.delete('/servers/:jobId', checkApiKey, async (req, res) => {
 });
 
 app.post('/disruptions', checkApiKey, async (req, res) => {
-	const {
-		messageName,
-		stations,
-		lines,
-		mainMessageAt,
-		disruption,
-		internalInfo,
-		NOR,
-		ENG,
-		startDate,
-		endDate
-	} = req.body;
+    const {
+        messageName,
+        stations,
+        lines,
+        mainMessageAt,
+        disruption,
+        internalInfo,
+        NOR,
+        ENG,
+        startDate,
+        endDate
+    } = req.body;
 
     // Log the received body for debugging
     console.log("Received body:", req.body);
 
-	// Validate required fields
-	if (!messageName || !stations || !lines || !mainMessageAt || typeof disruption !== "boolean" ||
-		!internalInfo || !NOR || !ENG || !startDate || !endDate) {
-		return res.status(400).json({ error: 'Missing required fields' });
-	}
+    // Validate required fields
+    if (!messageName || !stations || !lines || !mainMessageAt || typeof disruption !== "boolean" ||
+        !internalInfo || !NOR || !ENG || !startDate || !endDate) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
 
-	const { from, to, consequence, reason, action, forecast, nextUpdate } = internalInfo;
-	if (!from || !to || !consequence || !reason || !action || !forecast || !nextUpdate) {
-		return res.status(400).json({ error: 'Missing required internalInfo fields' });
-	}
+    const { from, to, consequence, reason, action, forecast, nextUpdate } = internalInfo;
+    if (!from || !to || !consequence || !reason || !action || !forecast || !nextUpdate) {
+        return res.status(400).json({ error: 'Missing required internalInfo fields' });
+    }
 
-	if (!NOR.Title || !NOR.Description || !ENG.Title || !ENG.Description) {
-		return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
-	}
+    if (!NOR.Title || !NOR.Description || !ENG.Title || !ENG.Description) {
+        return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
+    }
 
-	const start = new Date(startDate);
-	const end = new Date(endDate);
-	const next = new Date(nextUpdate);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const next = new Date(nextUpdate);
 
-	if ([start, end, next].some(d => isNaN(d.getTime()))) {
-		return res.status(400).json({ error: 'Invalid date format in startDate, endDate, or internalInfo.nextUpdate' });
-	}
+    if ([start, end, next].some(d => isNaN(d.getTime()))) {
+        return res.status(400).json({ error: 'Invalid date format in startDate, endDate, or internalInfo.nextUpdate' });
+    }
 
-	try {
-		const newDisruption = new disruptions({
-			messageName,
-			stations,
-			lines,
-			mainMessageAt,
-			disruption,
-			internalInfo: {
-				from,
-				to,
-				consequence,
-				reason,
-				action,
-				forecast,
-				nextUpdate: next
-			},
-			NOR,
-			ENG,
-			startDate: start,
-			endDate: end
-		});
-		await newDisruption.save();
-		res.status(201).json(newDisruption);
-	} catch (error) {
-		res.status(500).json({ error: error.message });
-	}
+    try {
+        const newDisruption = new disruptions({
+            messageName,
+            stations,
+            lines,
+            mainMessageAt,
+            disruption,
+            internalInfo: {
+                from,
+                to,
+                consequence,
+                reason,
+                action,
+                forecast,
+                nextUpdate: next
+            },
+            NOR,
+            ENG,
+            startDate: start,
+            endDate: end
+        });
+        await newDisruption.save();
+        res.status(201).json(newDisruption);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 app.put('/disruptions/:id', checkApiKey, async (req, res) => {
-	const { id } = req.params;
-	const {
-		messageName,
-		stations,
-		lines,
-		mainMessageAt,
-		disruption,
-		internalInfo,
-		NOR,
-		ENG,
-		startDate,
-		endDate
-	} = req.body;
+    const { id } = req.params;
+    const {
+        messageName,
+        stations,
+        lines,
+        mainMessageAt,
+        disruption,
+        internalInfo,
+        NOR,
+        ENG,
+        startDate,
+        endDate
+    } = req.body;
 
-	if (!messageName || !stations || !lines || !mainMessageAt || typeof disruption !== "boolean" ||
-		!internalInfo || !NOR || !ENG || !startDate || !endDate) {
-		return res.status(400).json({ error: 'Missing required fields' });
-	}
+    if (!messageName || !stations || !lines || !mainMessageAt || typeof disruption !== "boolean" ||
+        !internalInfo || !NOR || !ENG || !startDate || !endDate) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
 
-	const { from, to, consequence, reason, action, forecast, nextUpdate } = internalInfo;
-	if (!from || !to || !consequence || !reason || !action || !forecast || !nextUpdate) {
-		return res.status(400).json({ error: 'Missing required internalInfo fields' });
-	}
+    const { from, to, consequence, reason, action, forecast, nextUpdate } = internalInfo;
+    if (!from || !to || !consequence || !reason || !action || !forecast || !nextUpdate) {
+        return res.status(400).json({ error: 'Missing required internalInfo fields' });
+    }
 
-	if (!NOR.Title || !NOR.Description || !ENG.Title || !ENG.Description) {
-	return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
-}
-	const existingDisruption = await disruptions.findOne({ messageName }).exec();
-	if (existingDisruption && existingDisruption._id.toString() !== id) {
-		return res.status(409).json({ error: 'Disruption with this name already exists' });
-	}
+    if (!NOR.Title || !NOR.Description || !ENG.Title || !ENG.Description) {
+        return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
+    }
+    const existingDisruption = await disruptions.findOne({ messageName }).exec();
+    if (existingDisruption && existingDisruption._id.toString() !== id) {
+        return res.status(409).json({ error: 'Disruption with this name already exists' });
+    }
 
-	const start = new Date(startDate);
-	const end = new Date(endDate);
-	const next = new Date(nextUpdate);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const next = new Date(nextUpdate);
 
-	if ([start, end, next].some(d => isNaN(d.getTime()))) {
-		return res.status(400).json({ error: 'Invalid date format in startDate, endDate, or internalInfo.nextUpdate' });
-	}
+    if ([start, end, next].some(d => isNaN(d.getTime()))) {
+        return res.status(400).json({ error: 'Invalid date format in startDate, endDate, or internalInfo.nextUpdate' });
+    }
 
-	try {
-		const updatedDisruption = await disruptions.findByIdAndUpdate(
-			id,
-			{
-				$set: {
-					messageName,
-					stations,
-					lines,
-					mainMessageAt,
-					disruption,
-					internalInfo: {
-						from,
-						to,
-						consequence,
-						reason,
-						action,
-						forecast,
-						nextUpdate: next
-					},
-					NOR,
-					ENG,
-					startDate: start,
-					endDate: end
-				}
-			},
-			{ new: true, runValidators: true }
-		).exec();
+    try {
+        const updatedDisruption = await disruptions.findByIdAndUpdate(
+            id,
+            {
+                $set: {
+                    messageName,
+                    stations,
+                    lines,
+                    mainMessageAt,
+                    disruption,
+                    internalInfo: {
+                        from,
+                        to,
+                        consequence,
+                        reason,
+                        action,
+                        forecast,
+                        nextUpdate: next
+                    },
+                    NOR,
+                    ENG,
+                    startDate: start,
+                    endDate: end
+                }
+            },
+            { new: true, runValidators: true }
+        ).exec();
 
-		if (!updatedDisruption) return res.status(404).json({ error: 'Disruption not found' });
-		res.status(200).json(updatedDisruption);
-	} catch (error) {
-		res.status(500).json({ error: error.message });
-	}
+        if (!updatedDisruption) return res.status(404).json({ error: 'Disruption not found' });
+        res.status(200).json(updatedDisruption);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 app.get('/disruptions/:id', async (req, res) => {
@@ -721,9 +721,15 @@ app.get('/disruptions/:id', async (req, res) => {
 
     try {
         const disruption = await disruptions.findById(id).exec();
-        disruption.id = disruption._id.toString(); // Convert ObjectId to string
-        if (!disruption) return res.status(404).json({ error: 'Disruption not found' });
-        res.json(disruption);
+
+        if (!disruption) {
+            return res.status(404).json({ error: 'Disruption not found' });
+        }
+
+        const disruptionObj = disruption.toObject(); // Convert to plain object
+        disruptionObj.id = disruptionObj._id.toString(); // Add `id`
+
+        res.json(disruptionObj);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -732,10 +738,12 @@ app.get('/disruptions/:id', async (req, res) => {
 app.get('/disruptions', async (req, res) => {
     try {
         const allDisruptions = await disruptions.find().exec();
-        for (const disruption of allDisruptions) {
-            disruption.id = disruption._id.toString(); // Convert ObjectId to string
-        }
-        res.status(200).json(allDisruptions); // Will be an empty array if nothing is found
+        const disruptionsWithId = allDisruptions.map(d => {
+            const obj = d.toObject(); // Convert to plain JS object
+            obj.id = obj._id.toString(); // Add `id`
+            return obj;
+        });
+        res.status(200).json(disruptionsWithId);
     } catch (err) {
         console.error('Error fetching disruptions:', err);
         res.status(500).json({ error: 'Failed to fetch disruptions' });
@@ -757,9 +765,9 @@ app.post('/exportMessages', checkApiKey, async (req, res) => {
     }
 
     const timestamp = Date.now();
-    
+
     exportMessages[timestamp] = message;
-    res.status(201).json({ message: 'MessageId: ' + timestamp.toString()});
+    res.status(201).json({ message: 'MessageId: ' + timestamp.toString() });
 });
 
 // Every minute, delete messages with timestamp older than 3 minutes
