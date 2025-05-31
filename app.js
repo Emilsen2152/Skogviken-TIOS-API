@@ -586,6 +586,9 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
 		endDate
 	} = req.body;
 
+    // Log the received body for debugging
+    console.log("Received body:", req.body);
+
 	// Validate required fields
 	if (!messageName || !stations || !lines || !mainMessageAt || typeof disruption !== "boolean" ||
 		!internalInfo || !NOR || !ENG || !startDate || !endDate) {
@@ -639,7 +642,6 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
 
 app.put('/disruptions/:id', checkApiKey, async (req, res) => {
 	const { id } = req.params;
-    console.log("Received body:", req.body);
 	const {
 		messageName,
 		stations,
