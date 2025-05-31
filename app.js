@@ -639,6 +639,7 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
 
 app.put('/disruptions/:id', checkApiKey, async (req, res) => {
 	const { id } = req.params;
+    console.log("Received body:", req.body);
 	const {
 		messageName,
 		stations,
@@ -663,9 +664,8 @@ app.put('/disruptions/:id', checkApiKey, async (req, res) => {
 	}
 
 	if (!NOR.Title || !NOR.Description || !ENG.Title || !ENG.Description) {
-		return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
-	}
-
+	return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
+}
 	const existingDisruption = await disruptions.findOne({ messageName }).exec();
 	if (existingDisruption && existingDisruption._id.toString() !== id) {
 		return res.status(409).json({ error: 'Disruption with this name already exists' });
