@@ -601,11 +601,6 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
 		return res.status(400).json({ error: 'Missing required fields in NOR or ENG' });
 	}
 
-	const existingDisruption = await disruptions.findOne({ messageName }).exec();
-	if (existingDisruption) {
-		return res.status(409).json({ error: 'Disruption with this name already exists' });
-	}
-
 	const start = new Date(startDate);
 	const end = new Date(endDate);
 	const next = new Date(nextUpdate);
