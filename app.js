@@ -721,6 +721,7 @@ app.get('/disruptions/:id', async (req, res) => {
 
     try {
         const disruption = await disruptions.findById(id).exec();
+        disruption.id = disruption._id.toString(); // Convert ObjectId to string
         if (!disruption) return res.status(404).json({ error: 'Disruption not found' });
         res.json(disruption);
     } catch (error) {
@@ -731,6 +732,9 @@ app.get('/disruptions/:id', async (req, res) => {
 app.get('/disruptions', async (req, res) => {
     try {
         const allDisruptions = await disruptions.find().exec();
+        for (const disruption of allDisruptions) {
+            disruption.id = disruption._id.toString(); // Convert ObjectId to string
+        }
         res.status(200).json(allDisruptions); // Will be an empty array if nothing is found
     } catch (err) {
         console.error('Error fetching disruptions:', err);
