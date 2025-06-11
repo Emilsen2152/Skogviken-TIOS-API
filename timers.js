@@ -262,7 +262,7 @@ async function updateLocations() {
 
             if (!location.passed && !location.cancelledAtStation && location.arrival < currentDate) {
                 const difference = (currentDate - location.arrival) / 60000;
-                train = await delayTrain(train, difference, true);
+                train = await delayTrain(train, difference, false);
                 routeModified = true;
             }
 
