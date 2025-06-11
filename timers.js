@@ -219,7 +219,7 @@ async function updateLocations() {
 
     const modifiedTrains = [];
 
-    for (const train of allTrains) {
+    for (let train of allTrains) {
         let routeModified = false;
 
         if (
