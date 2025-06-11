@@ -6,7 +6,7 @@ const { DateTime } = require('luxon');
 const trains = require('./utils/train');
 const servers = require('./utils/server');
 const disruptions = require('./utils/disruptions');
-const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset } = require('./timers');
+const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset, delayTrain } = require('./timers');
 const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers'); // Modularized helpers
 const { CronJob } = require('cron');
 
@@ -354,46 +354,15 @@ app.patch('/trains/:trainNumber/delay', checkApiKey, async (req, res) => {
     }
 
     try {
-        const train = await trains.findOne({ trainNumber }).exec();
+        let train = await trains.findOne({ trainNumber }).exec();
         if (!train) return res.status(404).json({ error: 'Train not found' });
 
-        let delayLeft = delay;
-        train.currentRoute.forEach(location => {
-            if (!location.passed && !location.cancelledAtStation && delayLeft > 0 && editStopTimes) {
-                const { arrival, departure } = location;
-                const stopDuration = (departure - arrival) / 60000;
-
-                if (stopDuration > 1) {
-                    const possibleReduction = stopDuration - 1;
-                    const reduction = Math.min(possibleReduction, delayLeft);
-
-                    arrival.setMinutes(arrival.getMinutes() + delayLeft);
-                    departure.setMinutes(departure.getMinutes() + delayLeft - reduction);
-
-                    location.arrival = arrival;
-                    location.departure = departure;
-
-                    delayLeft -= reduction;
-                } else {
-                    arrival.setMinutes(arrival.getMinutes() + delayLeft);
-                    departure.setMinutes(departure.getMinutes() + delayLeft);
-
-                    location.arrival = arrival;
-                    location.departure = departure;
-                }
-            } else if (!location.passed && !location.cancelledAtStation && delayLeft > 0) {
-                const { arrival, departure } = location;
-
-                arrival.setMinutes(arrival.getMinutes() + delayLeft);
-                departure.setMinutes(departure.getMinutes() + delayLeft);
-
-                location.arrival = arrival;
-                location.departure = departure;
-            };
-        });
+        train = await delayTrain(train, delay, editStopTimes)
 
         train.markModified('currentRoute');
+
         await train.save();
+
         res.status(200).json(train);
     } catch (error) {
         res.status(500).json({ error: error.message });

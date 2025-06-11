@@ -98,6 +98,45 @@ const autoCancelledStops = {
     }
 }
 
+function delayTrain(train, delay, editStopTimes) {
+    let delayLeft = delay;
+    train.currentRoute.forEach(location => {
+        if (!location.passed && !location.cancelledAtStation && delayLeft > 0 && editStopTimes) {
+            const { arrival, departure } = location;
+            const stopDuration = (departure - arrival) / 60000;
+
+            if (stopDuration > 1) {
+                const possibleReduction = stopDuration - 1;
+                const reduction = Math.min(possibleReduction, delayLeft);
+
+                arrival.setMinutes(arrival.getMinutes() + delayLeft);
+                departure.setMinutes(departure.getMinutes() + delayLeft - reduction);
+
+                location.arrival = arrival;
+                location.departure = departure;
+
+                delayLeft -= reduction;
+            } else {
+                arrival.setMinutes(arrival.getMinutes() + delayLeft);
+                departure.setMinutes(departure.getMinutes() + delayLeft);
+
+                location.arrival = arrival;
+                location.departure = departure;
+            }
+        } else if (!location.passed && !location.cancelledAtStation && delayLeft > 0) {
+            const { arrival, departure } = location;
+
+            arrival.setMinutes(arrival.getMinutes() + delayLeft);
+            departure.setMinutes(departure.getMinutes() + delayLeft);
+
+            location.arrival = arrival;
+            location.departure = departure;
+        };
+    });
+
+    return train;
+}
+
 async function dayReset() {
     const allTrains = await trains.find({});
 
@@ -221,8 +260,9 @@ async function updateLocations() {
                 routeModified = true;
             }
 
-            if (!location.passed && !location.cancelledAtStation && location.departure < currentDate) {
-                location.departure = currentDate;
+            if (!location.passed && !location.cancelledAtStation && location.arrival < currentDate) {
+                const difference = (currentDate - location.arrival) / 60000;
+                train = await delayTrain(train, difference, true);
                 routeModified = true;
             }
 
@@ -308,5 +348,6 @@ module.exports = {
     locationsDepartures,
     locationNames,
     updateLocations,
-    dayReset
+    dayReset,
+    delayTrain
 };
