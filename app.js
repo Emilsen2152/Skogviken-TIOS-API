@@ -502,6 +502,7 @@ app.post('/forceReset', checkApiKey, async (req, res) => {
 
 app.post('/servers', checkApiKey, async (req, res) => {
     const { jobId } = req.body;
+    console.log("Received body for server creation:", req.body);
 
     if (!jobId) return res.status(400).json({ error: 'Missing jobId' });
 
@@ -535,6 +536,8 @@ app.patch('/servers/:jobId', checkApiKey, async (req, res) => {
 
 app.delete('/servers/:jobId', checkApiKey, async (req, res) => {
     const { jobId } = req.params;
+
+    console.log("Received server deletion:", jobId);
 
     const deletedServer = await servers.findOneAndDelete({ jobId }).exec();
     if (!deletedServer) return res.status(404).json({ error: 'Server not found' });
