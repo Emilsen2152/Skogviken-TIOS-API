@@ -33,37 +33,37 @@ async function isRailwayActive() {
 const autoCancelledStops = {
     SK: {
         start: DateTime.fromObject(
-            { year: 2025, month: 5, day: 26, hour: 18, minute: 0 },
+            { year: 2025, month: 6, day: 28, hour: 22, minute: 30 },
             { zone: 'Europe/Oslo' }
         ),
         end: DateTime.fromObject(
-            { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
+            { year: 2025, month: 7, day: 4, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
-        routes: ['RE80'],
+        routes: ['RE80', 'R81'],
         trains: ['91105', '91116'],
         all: false
     },
     SIG: {
         start: DateTime.fromObject(
-            { year: 2025, month: 5, day: 26, hour: 18, minute: 0 },
+            { year: 2025, month: 6, day: 28, hour: 22, minute: 30 },
             { zone: 'Europe/Oslo' }
         ),
         end: DateTime.fromObject(
-            { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
+            { year: 2025, month: 7, day: 4, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
-        routes: ['RE80'],
-        trains: ['91105', '91116'],
-        all: false
+        routes: [],
+        trains: [],
+        all: true
     },
     SIP: {
         start: DateTime.fromObject(
-            { year: 2025, month: 5, day: 26, hour: 18, minute: 0 },
+            { year: 2025, month: 6, day: 28, hour: 22, minute: 30 },
             { zone: 'Europe/Oslo' }
         ),
         end: DateTime.fromObject(
-            { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
+            { year: 2025, month: 7, day: 4, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
         routes: [],
@@ -72,11 +72,11 @@ const autoCancelledStops = {
     },
     VBT: {
         start: DateTime.fromObject(
-            { year: 2025, month: 5, day: 26, hour: 18, minute: 0 },
+            { year: 2025, month: 6, day: 28, hour: 22, minute: 30 },
             { zone: 'Europe/Oslo' }
         ),
         end: DateTime.fromObject(
-            { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
+            { year: 2025, month: 7, day: 4, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
         routes: [],
@@ -85,11 +85,11 @@ const autoCancelledStops = {
     },
     KLH: {
         start: DateTime.fromObject(
-            { year: 2025, month: 5, day: 26, hour: 18, minute: 0 },
+            { year: 2025, month: 6, day: 28, hour: 22, minute: 30 },
             { zone: 'Europe/Oslo' }
         ),
         end: DateTime.fromObject(
-            { year: 2025, month: 5, day: 29, hour: 4, minute: 0 },
+            { year: 2025, month: 7, day: 4, hour: 4, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
         routes: [],
