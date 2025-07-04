@@ -37,7 +37,7 @@ const autoCancelledStops = {
             { zone: 'Europe/Oslo' }
         ),
         end: DateTime.fromObject(
-            { year: 2025, month: 7, day: 4, hour: 16, minute: 0 },
+            { year: 2025, month: 7, day: 4, hour: 14, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
         routes: ['RE80', 'R81'],
@@ -50,7 +50,7 @@ const autoCancelledStops = {
             { zone: 'Europe/Oslo' }
         ),
         end: DateTime.fromObject(
-            { year: 2025, month: 7, day: 4, hour: 16, minute: 0 },
+            { year: 2025, month: 7, day: 4, hour: 14, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
         routes: [],
@@ -63,7 +63,7 @@ const autoCancelledStops = {
             { zone: 'Europe/Oslo' }
         ),
         end: DateTime.fromObject(
-            { year: 2025, month: 7, day: 4, hour: 16, minute: 0 },
+            { year: 2025, month: 7, day: 4, hour: 14, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
         routes: [],
@@ -76,7 +76,7 @@ const autoCancelledStops = {
             { zone: 'Europe/Oslo' }
         ),
         end: DateTime.fromObject(
-            { year: 2025, month: 7, day: 4, hour: 16, minute: 0 },
+            { year: 2025, month: 7, day: 4, hour: 14, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
         routes: [],
@@ -89,7 +89,7 @@ const autoCancelledStops = {
             { zone: 'Europe/Oslo' }
         ),
         end: DateTime.fromObject(
-            { year: 2025, month: 7, day: 4, hour: 16, minute: 0 },
+            { year: 2025, month: 7, day: 4, hour: 14, minute: 0 },
             { zone: 'Europe/Oslo' }
         ),
         routes: [],
