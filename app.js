@@ -764,7 +764,20 @@ app.get('/exportMessages/:messageId', checkApiKey, (req, res) => {
 });
 
 app.get('/journey', (req, res) => {
-    res.status(200).json({ message: 'Journey endpoint is not implemented yet' });
+    return res.status(501).json({ error: 'Not implemented', message: 'Journey endpoint is not implemented yet' });
+
+    const { startStation, endStation } = req.body;
+
+    if (!startStation || !endStation) {
+        return res.status(400).json({ error: 'Missing startStation or endStation' });
+    }
+
+    const trainsFromStartStation = locationsDepartures[startStation];
+    if (!trainsFromStartStation || trainsFromStartStation.length === 0) {
+        return res.status(204).json({ message: 'No trains go from the start station' });
+    }
+
+    const legs = [];
 });
 
 // Start timers
