@@ -763,6 +763,10 @@ app.get('/exportMessages/:messageId', checkApiKey, (req, res) => {
     res.status(200).json({ message: exportMessages[messageId] });
 });
 
+app.get('/journey', (req, res) => {
+    res.status(200).json({ message: 'Journey endpoint is not implemented yet' });
+});
+
 // Start timers
 dayTimer.start();
 locationUpdateTimer.start();
