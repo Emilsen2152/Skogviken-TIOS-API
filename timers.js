@@ -197,6 +197,9 @@ async function dayReset() {
             };
 
             train.currentFormation = {};
+
+            train.position = [];
+
             await train.save();
         }
     }
