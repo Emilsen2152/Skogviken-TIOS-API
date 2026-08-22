@@ -14,13 +14,14 @@ const LOCATION_CODES = {
     RSK: 'Ruskka A/S sidespor',
     SK: 'Skogviken',
     SIG: 'Skiippagurra',
-    DOV: 'Drifts og vedlikeholds base',
     SIP: 'Skiippagurra-Sletta',
     VBT: 'Varangerbotn',
-    KLH: 'Kirkenes Lufthavn Høybuktmoen'
+    KLH: 'Kirkenes Lufthavn Høybuktmoen',
+    HSV: "Hesseng Vest",
+    KKN: "Kirkenes"
 };
 
-const clockControlledLocations = ['RUS', 'IST', 'MAS', 'RSK', 'DOV'];
+const clockControlledLocations = ['RUS', 'IST', 'MAS', 'RSK', "HSV"];
 
 const locationsArrivals = Object.fromEntries(Object.keys(LOCATION_CODES).map(k => [k, []]));
 const locationsDepartures = Object.fromEntries(Object.keys(LOCATION_CODES).map(k => [k, []]));
