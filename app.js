@@ -68,13 +68,13 @@ app.get('/status', (req, res) => {
 });
 
 // Get Norway's time with API key validation
-app.get('/norwayTime', checkApiKey, async (req, res) => {
+app.get('/norwayTime', checkApiKey(), async (req, res) => {
     const norwayTime = DateTime.now().setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm:ss');
     res.json({ norwayTime });
 });
 
 // Get Norway's time with custom format
-app.get('/norwayTime/custom/:format', checkApiKey, async (req, res) => {
+app.get('/norwayTime/custom/:format', checkApiKey(), async (req, res) => {
     const { format } = req.params;
     const validFormats = ['dd.MM.yyyy HH:mm:ss', 'dd.MM.yyyy HH:mm', 'dd.MM.yyyy', 'HH:mm:ss', 'HH:mm'];
     if (!validFormats.includes(format)) return res.status(400).json({ error: 'Invalid format' });
@@ -83,7 +83,7 @@ app.get('/norwayTime/custom/:format', checkApiKey, async (req, res) => {
     res.status(200).json({ norwayTime });
 });
 
-app.get('/norwayTime/offset', checkApiKey, async (req, res) => {
+app.get('/norwayTime/offset', checkApiKey(), async (req, res) => {
     // Get offset from UTC in hours
     const norwayTime = DateTime.now().setZone('Europe/Oslo');
     const offset = norwayTime.offset / 60; // Convert minutes to hours
@@ -91,7 +91,7 @@ app.get('/norwayTime/offset', checkApiKey, async (req, res) => {
 });
 
 // Add a new train
-app.post('/trains', checkApiKey, async (req, res) => {
+app.post('/trains', checkApiKey("admin"), async (req, res) => {
     const { trainNumber, operator, defaultRoute, extraTrain, routeNumber, currentFormation } = req.body;
 
     if (!trainNumber || !operator || !defaultRoute || extraTrain === undefined) {
@@ -171,7 +171,7 @@ app.get('/trains/:trainNumber/norwayTimeRoute', async (req, res) => {
 });
 
 // Fetch trains based on query
-app.get('/trains', checkApiKey, async (req, res) => {
+app.get('/trains', checkApiKey("admin"), async (req, res) => {
     const { query } = req.body;
     if (!query || typeof query !== 'object') return res.status(400).json({ error: 'Invalid query format' });
 
@@ -185,7 +185,7 @@ app.get('/trains', checkApiKey, async (req, res) => {
 });
 
 // Update specific train details
-app.patch('/trains/:trainNumber', checkApiKey, async (req, res) => {
+app.patch('/trains/:trainNumber', checkApiKey("admin", "cas", "traffic"), async (req, res) => {
     const { trainNumber } = req.params;
     const updates = req.body;
 
@@ -345,7 +345,7 @@ app.get('/trains/:trainNumber/generalDelay', async (req, res) => {
 });
 
 // Apply delay to train
-app.patch('/trains/:trainNumber/delay', checkApiKey, async (req, res) => {
+app.patch('/trains/:trainNumber/delay', checkApiKey("admin", "cas", "traffic"), async (req, res) => {
     const { trainNumber } = req.params;
     const { delay, editStopTimes } = req.body;
 
@@ -370,7 +370,7 @@ app.patch('/trains/:trainNumber/delay', checkApiKey, async (req, res) => {
 });
 
 // Cancel a train at a specific location or all locations
-app.patch('/trains/:trainNumber/cancel', checkApiKey, async (req, res) => {
+app.patch('/trains/:trainNumber/cancel', checkApiKey("admin", "cas", "traffic"), async (req, res) => {
     try {
         const { trainNumber } = req.params;
         const { startLocation } = req.body || {};
@@ -407,7 +407,7 @@ app.patch('/trains/:trainNumber/cancel', checkApiKey, async (req, res) => {
 });
 
 // Replace existing train details
-app.put('/trains/:trainNumber', checkApiKey, async (req, res) => {
+app.put('/trains/:trainNumber', checkApiKey("admin"), async (req, res) => {
     const { trainData } = req.body;
 
     // Check if trainData is a valid object
@@ -445,7 +445,7 @@ app.put('/trains/:trainNumber', checkApiKey, async (req, res) => {
 });
 
 // Delete a train
-app.delete('/trains/:trainNumber', checkApiKey, async (req, res) => {
+app.delete('/trains/:trainNumber', checkApiKey("admin"), async (req, res) => {
     const { trainNumber } = req.params;
 
     try {
@@ -481,7 +481,7 @@ app.get('/locations', (req, res) => {
 });
 
 // Force update locations method
-app.post('/locations', checkApiKey, async (req, res) => {
+app.post('/locations', checkApiKey("admin"), async (req, res) => {
     try {
         await updateLocations();
         res.status(200).json({ message: 'Locations updated' });
@@ -490,7 +490,7 @@ app.post('/locations', checkApiKey, async (req, res) => {
     }
 });
 
-app.post('/forceReset', checkApiKey, async (req, res) => {
+app.post('/forceReset', checkApiKey("admin"), async (req, res) => {
     try {
         await dayReset();
         await updateLocations();
@@ -500,7 +500,7 @@ app.post('/forceReset', checkApiKey, async (req, res) => {
     }
 });
 
-app.post('/servers', checkApiKey, async (req, res) => {
+app.post('/servers', checkApiKey("admin"), async (req, res) => {
     const { jobId } = req.body;
     console.log("Received body for server creation:", req.body);
 
@@ -518,7 +518,7 @@ app.post('/servers', checkApiKey, async (req, res) => {
     }
 });
 
-app.patch('/servers/:jobId', checkApiKey, async (req, res) => {
+app.patch('/servers/:jobId', checkApiKey("admin"), async (req, res) => {
     const { jobId } = req.params;
     const { activeRailwayWorkers } = req.body;
 
@@ -534,7 +534,7 @@ app.patch('/servers/:jobId', checkApiKey, async (req, res) => {
     res.status(200).json(updatedServer);
 });
 
-app.delete('/servers/:jobId', checkApiKey, async (req, res) => {
+app.delete('/servers/:jobId', checkApiKey("admin"), async (req, res) => {
     const { jobId } = req.params;
 
     console.log("Received server deletion:", jobId);
@@ -544,7 +544,7 @@ app.delete('/servers/:jobId', checkApiKey, async (req, res) => {
     res.status(204).send(); //.json({ message: 'Successfully deleted' });
 });
 
-app.post('/disruptions', checkApiKey, async (req, res) => {
+app.post('/disruptions', checkApiKey("admin", "cas"), async (req, res) => {
     const {
         messageName,
         stations,
@@ -612,7 +612,7 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
     }
 });
 
-app.put('/disruptions/:id', checkApiKey, async (req, res) => {
+app.put('/disruptions/:id', checkApiKey("admin", "cas"), async (req, res) => {
     console.log("Received body for update:", req.body);
 
     const { id } = req.params;
@@ -724,7 +724,7 @@ app.get('/disruptions', async (req, res) => {
     }
 });
 
-app.delete('/disruptions/:id', checkApiKey, async (req, res) => {
+app.delete('/disruptions/:id', checkApiKey("admin", "cas"), async (req, res) => {
     const { id } = req.params;
 
     const deletedDisruption = await disruptions.findByIdAndDelete(id).exec();
@@ -732,7 +732,7 @@ app.delete('/disruptions/:id', checkApiKey, async (req, res) => {
     res.status(204).send(); //.json({ message: 'Successfully deleted' });
 });
 
-app.post('/exportMessages', checkApiKey, async (req, res) => {
+app.post('/exportMessages', checkApiKey("admin", "cas"), async (req, res) => {
     const { message } = req.body;
     if (!message || typeof message !== 'string') {
         return res.status(400).json({ error: 'Invalid message format' });
@@ -754,7 +754,7 @@ const cleanupCronJob = new CronJob('0 * * * * *', () => {
     }
 });
 
-app.get('/exportMessages/:messageId', checkApiKey, (req, res) => {
+app.get('/exportMessages/:messageId', checkApiKey("admin", "cas"), (req, res) => {
     const messageId = req.params.messageId;
     if (!exportMessages[messageId]) {
         return res.status(404).json({ error: 'Message not found', message: 'Message not found ' + messageId });
