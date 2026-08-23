@@ -1,53 +1,23 @@
 const { DateTime } = require('luxon');
 require('dotenv').config();
 
-function checkApiKey(...allowedRoles) {
-    return (req, res, next) => {
-        const apiKey = req.headers.key;
-        const token = req.headers.token;
-
-        // 1. Require at least one credential header
-        if (!apiKey && !token) {
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-
-        // 2. Server API Key validation
-        if (apiKey) {
-            if (apiKey === process.env.API_KEY) {
-                req.authType = 'server';
-                return next(); // Always allowed, bypasses role checks
-            }
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-
-        // 3. Client Token validation
-        if (token) {
-            // UNIMPLEMENTED: Replace this block with your token/crypto verification
-            //
-            // Example future implementation:
-            // const client = await verifyClientToken(token);
-            // if (!client) return res.status(401).json({ error: 'Unauthorized' });
-            //
-            // req.authType = 'client';
-            // req.client = client;
-            //
-            // // Role Check:
-            // // If allowedRoles is empty, allow all clients.
-            // // Otherwise, verify the client has one of the allowed roles.
-            // if (allowedRoles.length > 0 && !allowedRoles.includes(client.role)) {
-            //     return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
-            // }
-            //
-            // return next();
-
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-
+// API key validation
+function checkApiKey(req, res, next) {
+    // Check if the API key is present in the request headers
+    if (!req.headers || !req.headers.key) {
         return res.status(401).json({ error: 'Unauthorized' });
-    };
+    }
+    // Validate the API key
+    const apiKey = req.headers.key;
+
+    if (!apiKey || apiKey !== process.env.API_KEY) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    next();
 }
 
-// Validate train route data|
+// Validate train route data
 function validateRoute(route) {
     for (const station of route) {
         const { name, code, type, track, arrival, departure, stopType, passed, cancelledAtStation } = station;
