@@ -89,7 +89,7 @@ app.get('/norwayTime/offset', checkApiKey, async (req, res) => {
 
 // Add a new train
 app.post('/trains', checkApiKey, async (req, res) => {
-    const { trainNumber, operator, defaultRoute, extraTrain, routeNumber, currentFormation, messages } = req.body;
+    const { trainNumber, operator, defaultRoute, extraTrain, routeNumber, currentFormation } = req.body;
 
     if (!trainNumber || !operator || !defaultRoute || extraTrain === undefined) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -106,7 +106,6 @@ app.post('/trains', checkApiKey, async (req, res) => {
         const currentRoute = convertToUTC(defaultRoute);
         const formationToAdd = currentFormation && typeof currentFormation === 'object' ? currentFormation : {};
         const routeNumberToAdd = routeNumber || '';
-        const messagesToAdd = Array.isArray(messages) ? messages : [];
 
         const newTrain = new trains({
             trainNumber,
@@ -116,7 +115,6 @@ app.post('/trains', checkApiKey, async (req, res) => {
             defaultRoute,
             currentRoute,
             currentFormation: formationToAdd,
-            messages: messagesToAdd
             // position is excluded here and will fall back to the schema default: []
         });
 
