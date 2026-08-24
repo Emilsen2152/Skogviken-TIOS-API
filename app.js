@@ -7,7 +7,7 @@ const trains = require('./utils/train');
 const servers = require('./utils/server');
 const disruptions = require('./utils/disruptions');
 const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset, delayTrain } = require('./timers');
-const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers'); // Modularized helpers
+const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers');
 const { CronJob } = require('cron');
 
 const exportMessages = {};
@@ -22,28 +22,26 @@ function convertDates(obj) {
     for (const key in obj) {
         const value = obj[key];
 
-        if (key === 'arrival' || key === 'departure') { // Only attempt conversion if key matches
+        if (key === 'arrival' || key === 'departure') {
             if (typeof value === 'string') {
-                let date = DateTime.fromISO(value); // Try ISO format first
+                let date = DateTime.fromISO(value);
 
                 if (!date.isValid) {
-                    date = DateTime.fromFormat(value, 'yyyy-MM-dd HH:mm:ss'); // "YYYY-MM-DD HH:mm:ss"
+                    date = DateTime.fromFormat(value, 'yyyy-MM-dd HH:mm:ss');
                 }
-
                 if (!date.isValid) {
-                    date = DateTime.fromFormat(value, 'yyyy/MM/dd HH:mm:ss'); // "YYYY/MM/DD HH:mm:ss"
+                    date = DateTime.fromFormat(value, 'yyyy/MM/dd HH:mm:ss');
                 }
-
                 if (!date.isValid) {
-                    date = DateTime.fromFormat(value, 'yyyy-MM-dd'); // "YYYY-MM-DD"
+                    date = DateTime.fromFormat(value, 'yyyy-MM-dd');
                 }
 
                 if (date.isValid) {
-                    obj[key] = date.toJSDate(); // Convert to JavaScript Date
+                    obj[key] = date.toJSDate();
                 }
             }
         } else if (typeof value === 'object' && value !== null) {
-            convertDates(value); // Recursively check nested objects
+            convertDates(value);
         }
     }
 }
@@ -84,15 +82,14 @@ app.get('/norwayTime/custom/:format', checkApiKey, async (req, res) => {
 });
 
 app.get('/norwayTime/offset', checkApiKey, async (req, res) => {
-    // Get offset from UTC in hours
     const norwayTime = DateTime.now().setZone('Europe/Oslo');
-    const offset = norwayTime.offset / 60; // Convert minutes to hours
+    const offset = norwayTime.offset / 60;
     res.json({ offset });
 });
 
 // Add a new train
 app.post('/trains', checkApiKey, async (req, res) => {
-    const { trainNumber, operator, defaultRoute, extraTrain, routeNumber, currentFormation } = req.body;
+    const { trainNumber, operator, defaultRoute, extraTrain, routeNumber, currentFormation, messages } = req.body;
 
     if (!trainNumber || !operator || !defaultRoute || extraTrain === undefined) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -107,11 +104,9 @@ app.post('/trains', checkApiKey, async (req, res) => {
         if (existingTrain) return res.status(409).json({ error: 'Train number already exists' });
 
         const currentRoute = convertToUTC(defaultRoute);
-
-        // If currentFormation is missing or undefined, set it to an empty object
         const formationToAdd = currentFormation && typeof currentFormation === 'object' ? currentFormation : {};
-
         const routeNumberToAdd = routeNumber || '';
+        const messagesToAdd = Array.isArray(messages) ? messages : [];
 
         const newTrain = new trains({
             trainNumber,
@@ -120,7 +115,9 @@ app.post('/trains', checkApiKey, async (req, res) => {
             routeNumber: routeNumberToAdd,
             defaultRoute,
             currentRoute,
-            currentFormation: formationToAdd
+            currentFormation: formationToAdd,
+            messages: messagesToAdd
+            // position is excluded here and will fall back to the schema default: []
         });
 
         await newTrain.save();
@@ -157,8 +154,8 @@ app.get('/trains/:trainNumber/norwayTimeRoute', async (req, res) => {
             code: location.code,
             type: location.type,
             track: location.track,
-            arrival: DateTime.fromJSDate(location.arrival).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm'),
-            departure: DateTime.fromJSDate(location.departure).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm'),
+            arrival: location.arrival ? DateTime.fromJSDate(location.arrival).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm') : null,
+            departure: location.departure ? DateTime.fromJSDate(location.departure).setZone('Europe/Oslo').toFormat('dd.MM.yyyy HH:mm') : null,
             stopType: location.stopType,
             passed: location.passed,
             cancelledAtStation: location.cancelledAtStation
@@ -189,12 +186,13 @@ app.patch('/trains/:trainNumber', checkApiKey, async (req, res) => {
     const { trainNumber } = req.params;
     const updates = req.body;
 
-    // Convert ISO date strings to Date objects
     convertDates(updates);
 
     if (updates.trainNumber !== undefined) {
         const existingTrain = await trains.findOne({ trainNumber: updates.trainNumber }).exec();
-        if (existingTrain) return res.status(409).json({ error: 'Train number already exists' });
+        if (existingTrain && existingTrain.trainNumber !== trainNumber) {
+            return res.status(409).json({ error: 'Train number already exists' });
+        }
     }
 
     try {
@@ -218,34 +216,25 @@ app.get('/trains/:trainNumber/route/:locationCode/arrival/delay', async (req, re
     if (!train) return res.status(404).json({ error: 'Train not found' });
 
     const location = train.currentRoute.find(loc => loc.code === locationCode);
-    if (!location) return res.status(404).json({ error: 'Location not found in trains current route' });
-
+    if (!location) return res.status(404).json({ error: 'Location not found in train\'s current route' });
     if (location.cancelledAtStation) return res.status(400).json({ error: 'Train is cancelled at this station' });
 
     const defaultLocation = train.defaultRoute.find(loc => loc.code === locationCode);
-    if (!defaultLocation) return res.status(404).json({ error: 'Location not found in default route' });
+    if (!defaultLocation || !defaultLocation.arrival) return res.status(404).json({ error: 'Location arrival not found in default route' });
 
     try {
         const arrival = DateTime.fromJSDate(location.arrival).setZone('Europe/Oslo');
-        /*
-        Default route arrival time format. In norwegian time zone.
-
-        arrival: {
-            hours: Number
-            minutes: Number,
-        },
-        */
-
         const arrivalHours = defaultLocation.arrival.hours;
         const arrivalMinutes = defaultLocation.arrival.minutes;
 
-        const defaultArrivalTime = DateTime.fromObject({ hour: arrivalHours, minute: arrivalMinutes }, { zone: 'Europe/Oslo' }).toUTC().toJSDate();
+        const defaultArrivalTime = DateTime.fromObject(
+            { year: arrival.year, month: arrival.month, day: arrival.day, hour: arrivalHours, minute: arrivalMinutes }, 
+            { zone: 'Europe/Oslo' }
+        );
 
-        const delay = Math.floor((arrival - defaultArrivalTime) / 60000); // Convert milliseconds to minutes
+        const delay = Math.floor(arrival.diff(defaultArrivalTime, 'minutes').minutes);
 
-        res.status(200).json({
-            delay
-        });
+        res.status(200).json({ delay });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -258,34 +247,25 @@ app.get('/trains/:trainNumber/route/:locationCode/departure/delay', async (req, 
     if (!train) return res.status(404).json({ error: 'Train not found' });
 
     const location = train.currentRoute.find(loc => loc.code === locationCode);
-    if (!location) return res.status(404).json({ error: 'Location not found in trains current route' });
-
+    if (!location) return res.status(404).json({ error: 'Location not found in train\'s current route' });
     if (location.cancelledAtStation) return res.status(400).json({ error: 'Train is cancelled at this station' });
 
     const defaultLocation = train.defaultRoute.find(loc => loc.code === locationCode);
-    if (!defaultLocation) return res.status(404).json({ error: 'Location not found in default route' });
+    if (!defaultLocation || !defaultLocation.departure) return res.status(404).json({ error: 'Location departure not found in default route' });
 
     try {
         const departure = DateTime.fromJSDate(location.departure).setZone('Europe/Oslo');
-        /*
-        Default route departure time format. In norwegian time zone.
-
-        departure: {
-            hours: Number
-            minutes: Number,
-        },
-        */
-
         const departureHours = defaultLocation.departure.hours;
         const departureMinutes = defaultLocation.departure.minutes;
 
-        const defaultDepartureTime = DateTime.fromObject({ hour: departureHours, minute: departureMinutes }, { zone: 'Europe/Oslo' }).toUTC().toJSDate();
+        const defaultDepartureTime = DateTime.fromObject(
+            { year: departure.year, month: departure.month, day: departure.day, hour: departureHours, minute: departureMinutes }, 
+            { zone: 'Europe/Oslo' }
+        );
 
-        const delay = Math.floor((departure - defaultDepartureTime) / 60000); // Convert milliseconds to minutes
+        const delay = Math.floor(departure.diff(defaultDepartureTime, 'minutes').minutes);
 
-        res.status(200).json({
-            delay
-        });
+        res.status(200).json({ delay });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -298,7 +278,6 @@ app.get('/trains/:trainNumber/generalDelay', async (req, res) => {
     if (!train) return res.status(404).json({ error: 'Train not found' });
     if (train.currentRoute.length === 0) return res.status(404).json({ error: 'Train has no current route' });
 
-    // Find last passed station in the current route
     let lastPassedStationIndex = -1;
     for (let i = 0; i < train.currentRoute.length; i++) {
         if (train.currentRoute[i].passed) {
@@ -313,20 +292,13 @@ app.get('/trains/:trainNumber/generalDelay', async (req, res) => {
     }
 
     const lastPassedStation = train.currentRoute[lastPassedStationIndex];
-
-    // Find the matching scheduled stop from defaultRoute by station code
-    const scheduledStop = train.defaultRoute.find(
-        stop => stop.code === lastPassedStation.code
-    );
+    const scheduledStop = train.defaultRoute.find(stop => stop.code === lastPassedStation.code);
 
     if (!scheduledStop || !scheduledStop.departure) {
         return res.status(500).json({ error: 'Scheduled stop not found or missing departure time' });
     }
 
-    // Convert actual departure (JS Date) to Luxon DateTime in Europe/Oslo
     const actualDeparture = DateTime.fromJSDate(new Date(lastPassedStation.departure)).setZone('Europe/Oslo');
-
-    // Convert scheduled time (hours/minutes) to Luxon DateTime on the same day as actualDeparture
     const scheduledDeparture = DateTime.fromObject({
         year: actualDeparture.year,
         month: actualDeparture.month,
@@ -335,7 +307,6 @@ app.get('/trains/:trainNumber/generalDelay', async (req, res) => {
         minute: scheduledStop.departure.minutes
     }, { zone: 'Europe/Oslo' });
 
-    // Calculate delay in minutes
     const delay = Math.floor(actualDeparture.diff(scheduledDeparture, 'minutes').minutes);
 
     res.status(200).json({
@@ -357,12 +328,10 @@ app.patch('/trains/:trainNumber/delay', checkApiKey, async (req, res) => {
         let train = await trains.findOne({ trainNumber }).exec();
         if (!train) return res.status(404).json({ error: 'Train not found' });
 
-        train = await delayTrain(train, delay, editStopTimes)
-
+        train = await delayTrain(train, delay, editStopTimes);
         train.markModified('currentRoute');
 
         await train.save();
-
         res.status(200).json(train);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -376,7 +345,6 @@ app.patch('/trains/:trainNumber/cancel', checkApiKey, async (req, res) => {
         const { startLocation } = req.body || {};
 
         const train = await trains.findOne({ trainNumber }).exec();
-
         if (!train) return res.status(404).json({ error: 'Train not found' });
 
         if (!startLocation) {
@@ -410,25 +378,22 @@ app.patch('/trains/:trainNumber/cancel', checkApiKey, async (req, res) => {
 app.put('/trains/:trainNumber', checkApiKey, async (req, res) => {
     const { trainData } = req.body;
 
-    // Check if trainData is a valid object
     if (!trainData || typeof trainData !== 'object') {
         return res.status(400).json({ error: 'trainData must be a valid object' });
     }
 
-    // Validate that trainData has the required properties
     const requiredProperties = ['trainNumber', 'operator', 'extraTrain', 'defaultRoute', 'currentRoute', 'currentFormation', 'position'];
     const hasAllProperties = requiredProperties.every(prop => trainData.hasOwnProperty(prop));
 
     if (trainData.trainNumber !== req.params.trainNumber) {
         const existingTrain = await trains.findOne({ trainNumber: trainData.trainNumber }).exec();
         if (existingTrain) return res.status(409).json({ error: 'Train number already exists' });
-    };
+    }
 
     if (!hasAllProperties) {
         return res.status(400).json({ error: 'trainData must contain all required properties' });
-    };
+    }
 
-    // Convert ISO date strings to Date objects
     convertDates(trainData);
 
     try {
@@ -451,7 +416,7 @@ app.delete('/trains/:trainNumber', checkApiKey, async (req, res) => {
     try {
         const deletedTrain = await trains.findOneAndDelete({ trainNumber }).exec();
         if (!deletedTrain) return res.status(404).json({ error: 'Train not found' });
-        res.status(204).send(); //.json({ message: 'Successfully deleted' });
+        res.status(204).send();
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -460,18 +425,14 @@ app.delete('/trains/:trainNumber', checkApiKey, async (req, res) => {
 // Fetch arrivals for a station
 app.get('/locations/:stationCode/arrivals', (req, res) => {
     const { stationCode } = req.params;
-
     if (!locationsArrivals[stationCode]) return res.status(404).json({ error: 'Station not found or no trains' });
-
     res.json(locationsArrivals[stationCode]);
 });
 
 // Fetch departures for a station
 app.get('/locations/:stationCode/departures', (req, res) => {
     const { stationCode } = req.params;
-
     if (!locationsDepartures[stationCode]) return res.status(404).json({ error: 'Station not found or no trains' });
-
     res.json(locationsDepartures[stationCode]);
 });
 
@@ -536,12 +497,11 @@ app.patch('/servers/:jobId', checkApiKey, async (req, res) => {
 
 app.delete('/servers/:jobId', checkApiKey, async (req, res) => {
     const { jobId } = req.params;
-
     console.log("Received server deletion:", jobId);
 
     const deletedServer = await servers.findOneAndDelete({ jobId }).exec();
     if (!deletedServer) return res.status(404).json({ error: 'Server not found' });
-    res.status(204).send(); //.json({ message: 'Successfully deleted' });
+    res.status(204).send();
 });
 
 app.post('/disruptions', checkApiKey, async (req, res) => {
@@ -558,10 +518,8 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
         endDate
     } = req.body;
 
-    // Log the received body for debugging
     console.log("Received body:", req.body);
 
-    // Validate required fields
     if (!messageName || !stations || !lines || !mainMessageAt || typeof disruption !== "boolean" ||
         !internalInfo || !NOR || !ENG || !startDate || !endDate) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -700,8 +658,8 @@ app.get('/disruptions/:id', async (req, res) => {
             return res.status(404).json({ error: 'Disruption not found' });
         }
 
-        const disruptionObj = disruption.toObject(); // Convert to plain object
-        disruptionObj.id = disruptionObj._id.toString(); // Add `id`
+        const disruptionObj = disruption.toObject();
+        disruptionObj.id = disruptionObj._id.toString();
 
         res.json(disruptionObj);
     } catch (error) {
@@ -713,8 +671,8 @@ app.get('/disruptions', async (req, res) => {
     try {
         const allDisruptions = await disruptions.find().exec();
         const disruptionsWithId = allDisruptions.map(d => {
-            const obj = d.toObject(); // Convert to plain JS object
-            obj.id = obj._id.toString(); // Add `id`
+            const obj = d.toObject();
+            obj.id = obj._id.toString();
             return obj;
         });
         res.status(200).json(disruptionsWithId);
@@ -729,7 +687,7 @@ app.delete('/disruptions/:id', checkApiKey, async (req, res) => {
 
     const deletedDisruption = await disruptions.findByIdAndDelete(id).exec();
     if (!deletedDisruption) return res.status(404).json({ error: 'Disruption not found' });
-    res.status(204).send(); //.json({ message: 'Successfully deleted' });
+    res.status(204).send();
 });
 
 app.post('/exportMessages', checkApiKey, async (req, res) => {
@@ -748,7 +706,7 @@ app.post('/exportMessages', checkApiKey, async (req, res) => {
 const cleanupCronJob = new CronJob('0 * * * * *', () => {
     const now = Date.now();
     for (const messageId in exportMessages) {
-        if (now - messageId > 3 * 60 * 1000) { // 3 minutes in milliseconds
+        if (now - messageId > 3 * 60 * 1000) {
             delete exportMessages[messageId];
         }
     }
@@ -765,19 +723,6 @@ app.get('/exportMessages/:messageId', checkApiKey, (req, res) => {
 
 app.get('/journey', (req, res) => {
     return res.status(501).json({ error: 'Not implemented', message: 'Journey endpoint is not implemented yet' });
-
-    const { startStation, endStation } = req.body;
-
-    if (!startStation || !endStation) {
-        return res.status(400).json({ error: 'Missing startStation or endStation' });
-    }
-
-    const trainsFromStartStation = locationsDepartures[startStation];
-    if (!trainsFromStartStation || trainsFromStartStation.length === 0) {
-        return res.status(204).json({ message: 'No trains go from the start station' });
-    }
-
-    const legs = [];
 });
 
 // Start timers
