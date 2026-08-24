@@ -114,8 +114,7 @@ app.post('/trains', checkApiKey, async (req, res) => {
             routeNumber: routeNumberToAdd,
             defaultRoute,
             currentRoute,
-            currentFormation: formationToAdd,
-            // position is excluded here and will fall back to the schema default: []
+            currentFormation: formationToAdd
         });
 
         await newTrain.save();
