@@ -201,6 +201,13 @@ async function dayReset() {
 
             train.position = [];
 
+            // Delete old messages that have expired
+            const currentTime = DateTime.now().setZone('Europe/Oslo');
+            train.messages = train.messages.filter(message => {
+                const messageEndTime = message.to ? DateTime.fromJSDate(message.to).setZone('Europe/Oslo') : null;
+                return !messageEndTime || messageEndTime > currentTime;
+            });
+
             await train.save();
         }
     }
