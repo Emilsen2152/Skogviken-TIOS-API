@@ -42,7 +42,10 @@ const currentRouteStopSchema = new Schema({
 // Sub-schema for messages
 const messageSchema = new Schema({
     yellow: { type: Boolean, default: false },
-    message: { type: String, required: true },
+    message: {
+        NOR: { type: String, required: true },
+        ENG: { type: String, required: true }
+    },
     from: Date,
     to: Date
 }, { _id: false });
