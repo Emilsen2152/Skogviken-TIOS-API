@@ -12,6 +12,7 @@ const LOCATION_CODES = {
     IST: 'Inso tømmer A/S sidespor',
     MAS: 'Masjok',
     RSK: 'Ruskka A/S sidespor',
+    SJM: 'Skogviken Jernbanemuseum',
     SK: 'Skogviken',
     SIG: 'Skiippagurra',
     SIP: 'Skiippagurra-Sletta',
