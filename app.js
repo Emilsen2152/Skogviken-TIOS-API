@@ -89,7 +89,7 @@ app.get('/norwayTime/offset', checkApiKey, async (req, res) => {
 
 // Add a new train
 app.post('/trains', checkApiKey, async (req, res) => {
-    const { trainNumber, operator, defaultRoute, extraTrain, routeNumber, currentFormation } = req.body;
+    const { trainNumber, operator, defaultRoute, extraTrain, routeNumber } = req.body;
 
     if (!trainNumber || !operator || !defaultRoute || extraTrain === undefined) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -104,7 +104,6 @@ app.post('/trains', checkApiKey, async (req, res) => {
         if (existingTrain) return res.status(409).json({ error: 'Train number already exists' });
 
         const currentRoute = convertToUTC(defaultRoute);
-        const formationToAdd = currentFormation && typeof currentFormation === 'object' ? currentFormation : {};
         const routeNumberToAdd = routeNumber || '';
 
         const newTrain = new trains({
@@ -114,7 +113,6 @@ app.post('/trains', checkApiKey, async (req, res) => {
             routeNumber: routeNumberToAdd,
             defaultRoute,
             currentRoute,
-            currentFormation: formationToAdd
         });
 
         await newTrain.save();
@@ -164,15 +162,16 @@ app.get('/trains/:trainNumber/norwayTimeRoute', async (req, res) => {
     }
 });
 
-// Fetch trains based on query
+// Fetch trains based on query (URL parameters or default to all)
 app.get('/trains', checkApiKey, async (req, res) => {
-    const { query } = req.body;
-    if (!query || typeof query !== 'object') return res.status(400).json({ error: 'Invalid query format' });
-
     try {
+        // Support URL query string (e.g. /trains?trainNumber=123) or fallback to find all {}
+        const query = (req.query && Object.keys(req.query).length > 0) ? req.query : {};
+        
         const trainsList = await trains.find(query).exec();
-        if (!trainsList.length) return res.status(404).json({ error: 'No trains found' });
-        res.json(trainsList);
+        
+        // Return an empty array instead of 404 so frontend tables handle empty states cleanly
+        res.json(trainsList || []);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
