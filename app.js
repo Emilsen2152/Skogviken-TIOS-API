@@ -164,13 +164,14 @@ app.get('/trains/:trainNumber/norwayTimeRoute', async (req, res) => {
 
 // Fetch trains based on query
 app.get('/trains', checkApiKey, async (req, res) => {
-    const { query } = req.body;
-    if (!query || typeof query !== 'object') return res.status(400).json({ error: 'Invalid query format' });
-
     try {
+        // Read query parameters from URL string or default to fetching all trains {}
+        const query = (req.query && Object.keys(req.query).length > 0) ? req.query : {};
+        
         const trainsList = await trains.find(query).exec();
-        if (!trainsList.length) return res.status(404).json({ error: 'No trains found' });
-        res.json(trainsList);
+        
+        // Return empty list if no trains match
+        res.json(trainsList || []);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
