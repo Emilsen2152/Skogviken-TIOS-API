@@ -47,7 +47,7 @@ const messageSchema = new Schema({
         ENG: { type: String, required: true }
     },
     from: { type: Date, required: true },
-    to: { type: Date, required: false }
+    to: { type: Date, required: true }
 }, { _id: false });
 
 // Main Train Schema
