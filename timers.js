@@ -99,7 +99,7 @@ const autoCancelledStops = {
         trains: [],
         all: true
     }
-}
+};
 
 function delayTrain(train, delay, editStopTimes) {
     let delayLeft = delay;
@@ -134,7 +134,7 @@ function delayTrain(train, delay, editStopTimes) {
 
             location.arrival = arrival;
             location.departure = departure;
-        };
+        }
     });
 
     return train;
@@ -196,7 +196,7 @@ async function dayReset() {
 
             if (currentRouteChanged) {
                 train.markModified('currentRoute');
-            };
+            }
 
             train.currentFormation = {};
 
@@ -277,7 +277,7 @@ async function updateLocations() {
             if (!location.passed && !location.cancelledAtStation && location.departure < currentDate) {
                 const difference = (currentDate - location.departure) / 60000;
                 train = await delayTrain(train, difference, false);
-                allTrains[i] = train; // ✅ Replace the original train in the array
+                allTrains[i] = train; // Replace the original train in the array
                 routeModified = true;
             }
 
@@ -289,8 +289,16 @@ async function updateLocations() {
                 continue;
             }
 
-            const defaultArrival = DateTime.fromObject(train.defaultRoute[index].arrival, { zone: 'Europe/Oslo' });
-            const defaultDeparture = DateTime.fromObject(train.defaultRoute[index].departure, { zone: 'Europe/Oslo' });
+            // Sanitized Luxon Object Creation (Extracts raw hour/minute values to strip Mongoose metadata)
+            const defaultArrival = DateTime.fromObject({
+                hour: train.defaultRoute[index].arrival.hours,
+                minute: train.defaultRoute[index].arrival.minutes
+            }, { zone: 'Europe/Oslo' });
+
+            const defaultDeparture = DateTime.fromObject({
+                hour: train.defaultRoute[index].departure.hours,
+                minute: train.defaultRoute[index].departure.minutes
+            }, { zone: 'Europe/Oslo' });
 
             if (!defaultArrival.isValid || !defaultDeparture.isValid) {
                 console.error(`Invalid default time for train: ${train.trainNumber} at ${location.code}`);
