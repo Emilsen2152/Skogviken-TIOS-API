@@ -329,7 +329,9 @@ async function updateLocations() {
                 norwegianDeparture: { hours: norwegianDeparture.hour, minutes: norwegianDeparture.minute },
                 norwegianDefaultDeparture: { hours: defaultDeparture.hour, minutes: defaultDeparture.minute },
                 departureDelay,
-                fullRoute: train.currentRoute
+                fullRoute: train.currentRoute,
+                messages: train.messages,
+                currentFormation: train.currentFormation
             };
 
             if (!isFirst) newLocationsArrivals[location.code][train.trainNumber] = stationData;
