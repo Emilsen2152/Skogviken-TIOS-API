@@ -15,7 +15,7 @@ const defaultRouteStopSchema = new Schema({
         type: String, 
         enum: ['stasjon', 'stoppested', 'holdeplass', 'blokkpost', 'skifteområde', 'sidespor']
     },
-    track: Number,
+    track: String,
     arrival: timeSchema,
     departure: timeSchema,
     stopType: String,
@@ -31,7 +31,7 @@ const currentRouteStopSchema = new Schema({
         type: String, 
         enum: ['stasjon', 'stoppested', 'holdeplass', 'blokkpost', 'skifteområde', 'sidespor']
     },
-    track: Number,
+    track: String,
     arrival: Date,
     departure: Date,
     stopType: String,
