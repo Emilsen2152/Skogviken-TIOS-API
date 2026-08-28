@@ -642,7 +642,7 @@ app.get('/disruptions', async (req, res) => {
     }
 });
 
-app.get('/locations/:stationCode/disruptions/', async (req, res) => {
+app.get('/locations/:stationCode/disruptions', async (req, res) => {
     const { stationCode } = req.params;
     const { isActive } = req.query;
 
@@ -668,7 +668,7 @@ app.get('/locations/:stationCode/disruptions/', async (req, res) => {
     }
 });
 
-app.get('/lines/:lineCode/disruptions/', async (req, res) => {
+app.get('/lines/:lineCode/disruptions', async (req, res) => {
     const { lineCode } = req.params;
     const { isActive } = req.query;
 
