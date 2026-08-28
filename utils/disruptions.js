@@ -23,15 +23,6 @@ const disruptionsSchema = new Schema({
 		type: Boolean,
 		required: true
 	},
-	internalInfo: {
-		from: { type: String, required: true },
-		to: { type: String, required: true },
-		consequence: { type: String, required: true },
-		reason: { type: String, required: true },
-		action: { type: String, required: true },
-		forecast: { type: String, required: true },
-		nextUpdate: { type: Date, required: true }
-	},
 	NOR: {
 		Title: { type: String, required: true },
 		Description: { type: String, required: true }

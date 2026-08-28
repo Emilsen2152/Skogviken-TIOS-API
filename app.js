@@ -507,7 +507,6 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
         lines,
         mainMessageAt,
         disruption,
-        internalInfo,
         NOR,
         ENG,
         startDate,
@@ -517,13 +516,8 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
     console.log("Received body:", req.body);
 
     if (!messageName || !stations || !lines || !mainMessageAt || typeof disruption !== "boolean" ||
-        !internalInfo || !NOR || !ENG || !startDate || !endDate) {
+        !NOR || !ENG || !startDate || !endDate) {
         return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const { from, to, consequence, reason, action, forecast, nextUpdate } = internalInfo;
-    if (!from || !to || !consequence || !reason || !action || !forecast || !nextUpdate) {
-        return res.status(400).json({ error: 'Missing required internalInfo fields' });
     }
 
     if (!NOR.Title || !NOR.Description || !ENG.Title || !ENG.Description) {
@@ -532,10 +526,9 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
 
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const next = new Date(nextUpdate);
 
-    if ([start, end, next].some(d => isNaN(d.getTime()))) {
-        return res.status(400).json({ error: 'Invalid date format in startDate, endDate, or internalInfo.nextUpdate' });
+    if ([start, end].some(d => isNaN(d.getTime()))) {
+        return res.status(400).json({ error: 'Invalid date format in startDate or endDate' });
     }
 
     try {
@@ -545,15 +538,6 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
             lines,
             mainMessageAt,
             disruption,
-            internalInfo: {
-                from,
-                to,
-                consequence,
-                reason,
-                action,
-                forecast,
-                nextUpdate: next
-            },
             NOR,
             ENG,
             startDate: start,
@@ -576,7 +560,6 @@ app.put('/disruptions/:id', checkApiKey, async (req, res) => {
         lines,
         mainMessageAt,
         disruption,
-        internalInfo,
         NOR,
         ENG,
         startDate,
@@ -584,13 +567,8 @@ app.put('/disruptions/:id', checkApiKey, async (req, res) => {
     } = req.body;
 
     if (!messageName || !stations || !lines || !mainMessageAt || typeof disruption !== "boolean" ||
-        !internalInfo || !NOR || !ENG || !startDate || !endDate) {
+        !NOR || !ENG || !startDate || !endDate) {
         return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const { from, to, consequence, reason, action, forecast, nextUpdate } = internalInfo;
-    if (!from || !to || !consequence || !reason || !action || !forecast || !nextUpdate) {
-        return res.status(400).json({ error: 'Missing required internalInfo fields' });
     }
 
     if (!NOR.Title || !NOR.Description || !ENG.Title || !ENG.Description) {
@@ -603,10 +581,9 @@ app.put('/disruptions/:id', checkApiKey, async (req, res) => {
 
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const next = new Date(nextUpdate);
 
-    if ([start, end, next].some(d => isNaN(d.getTime()))) {
-        return res.status(400).json({ error: 'Invalid date format in startDate, endDate, or internalInfo.nextUpdate' });
+    if ([start, end].some(d => isNaN(d.getTime()))) {
+        return res.status(400).json({ error: 'Invalid date format in startDate or endDate' });
     }
 
     try {
@@ -619,15 +596,6 @@ app.put('/disruptions/:id', checkApiKey, async (req, res) => {
                     lines,
                     mainMessageAt,
                     disruption,
-                    internalInfo: {
-                        from,
-                        to,
-                        consequence,
-                        reason,
-                        action,
-                        forecast,
-                        nextUpdate: next
-                    },
                     NOR,
                     ENG,
                     startDate: start,
