@@ -15,10 +15,6 @@ const disruptionsSchema = new Schema({
 		type: [String],
 		required: true
 	},
-	mainMessageAt: {
-		type: [String],
-		required: true
-	},
 	disruption: {
 		type: Boolean,
 		required: true

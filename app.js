@@ -505,7 +505,6 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
         messageName,
         stations,
         lines,
-        mainMessageAt,
         disruption,
         NOR,
         ENG,
@@ -515,7 +514,7 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
 
     console.log("Received body:", req.body);
 
-    if (!messageName || !stations || !lines || !mainMessageAt || typeof disruption !== "boolean" ||
+    if (!messageName || !stations || !lines || typeof disruption !== "boolean" ||
         !NOR || !ENG || !startDate || !endDate) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -536,7 +535,6 @@ app.post('/disruptions', checkApiKey, async (req, res) => {
             messageName,
             stations,
             lines,
-            mainMessageAt,
             disruption,
             NOR,
             ENG,
@@ -558,7 +556,6 @@ app.put('/disruptions/:id', checkApiKey, async (req, res) => {
         messageName,
         stations,
         lines,
-        mainMessageAt,
         disruption,
         NOR,
         ENG,
@@ -566,7 +563,7 @@ app.put('/disruptions/:id', checkApiKey, async (req, res) => {
         endDate
     } = req.body;
 
-    if (!messageName || !stations || !lines || !mainMessageAt || typeof disruption !== "boolean" ||
+    if (!messageName || !stations || !lines || typeof disruption !== "boolean" ||
         !NOR || !ENG || !startDate || !endDate) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -594,7 +591,6 @@ app.put('/disruptions/:id', checkApiKey, async (req, res) => {
                     messageName,
                     stations,
                     lines,
-                    mainMessageAt,
                     disruption,
                     NOR,
                     ENG,
@@ -643,6 +639,57 @@ app.get('/disruptions', async (req, res) => {
     } catch (err) {
         console.error('Error fetching disruptions:', err);
         res.status(500).json({ error: 'Failed to fetch disruptions' });
+    }
+});
+
+app.get('/locations/:stationCode/disruptions/', async (req, res) => {
+    const { stationCode } = req.params;
+    const { isActive } = req.query;
+
+    try {
+        const now = new Date();
+        let query = { stations: stationCode };
+
+        if (isActive === 'true') {
+            query.startDate = { $lte: now };
+            query.endDate = { $gte: now };
+        }
+
+        const disruptionsList = await disruptions.find(query).exec();
+        const disruptionsWithId = disruptionsList.map(d => {
+            const obj = d.toObject();
+            obj.id = obj._id.toString();
+            return obj;
+        });
+
+        res.status(200).json(disruptionsWithId);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/lines/:lineCode/disruptions/', async (req, res) => {
+    const { lineCode } = req.params;
+    const { isActive } = req.query;
+
+    try {
+        const now = new Date();
+        let query = { lines: lineCode };
+
+        if (isActive === 'true') {
+            query.startDate = { $lte: now };
+            query.endDate = { $gte: now };
+        }
+
+        const disruptionsList = await disruptions.find(query).exec();
+        const disruptionsWithId = disruptionsList.map(d => {
+            const obj = d.toObject();
+            obj.id = obj._id.toString();
+            return obj;
+        });
+        res.status(200).json(disruptionsWithId);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
