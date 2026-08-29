@@ -68,6 +68,10 @@ const trainSchema = new Schema({
         type: String,
         required: false
     },
+    continuesAs: {
+        type: String,
+        default: null
+    },
     defaultRoute: [defaultRouteStopSchema],
     currentRoute: [currentRouteStopSchema],
     currentFormation: {

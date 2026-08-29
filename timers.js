@@ -313,6 +313,7 @@ async function updateLocations() {
                 operator: train.operator,
                 extraTrain: train.extraTrain,
                 routeNumber: train.routeNumber,
+                continuesAs: train.continuesAs || null,
                 type: location.type,
                 stopType: location.stopType,
                 hasPassed: location.passed,
