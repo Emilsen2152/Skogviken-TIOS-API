@@ -494,10 +494,15 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
      */
     const combined = [...arrivals, ...departures].filter(isForTrack);
 
+    // Filter out non passenger trains
+    const passengerTrains = combined.filter(train => {
+        return train.stopType === 'Passenger';
+    });
+
     /*
      * Ignore trains that have already passed.
      */
-    const upcomingTrains = combined.filter(train => !train.hasPassed);
+    const upcomingTrains = passengerTrains.filter(train => !train.hasPassed);
 
     /*
      * Deduplicate by train number.
