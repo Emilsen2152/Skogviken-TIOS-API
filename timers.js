@@ -2,6 +2,7 @@ const CronJob = require('cron').CronJob;
 const trains = require('./utils/train');
 const servers = require('./utils/server');
 const { DateTime } = require('luxon');
+const { emitLocationSnapshot } = require('./socketEvents');
 
 console.log('Timers are running...');
 
@@ -363,6 +364,8 @@ async function updateLocations() {
 
     Object.keys(locationNames).forEach(key => delete locationNames[key]);
     Object.assign(locationNames, newLocationNames);
+
+    emitLocationSnapshot(locationsArrivals, locationsDepartures, locationNames);
 }
 
 const locationUpdateTimer = new CronJob('40 * * * * *', updateLocations, null, false, 'Europe/Oslo');

@@ -1,14 +1,17 @@
 require('dotenv').config();
+const http = require('http');
 const mongoose = require('mongoose');
 const express = require('express');
 const cors = require('cors');
 const { DateTime } = require('luxon');
+const { Server } = require('socket.io');
 const trains = require('./utils/train');
 const servers = require('./utils/server');
 const disruptions = require('./utils/disruptions');
 const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset, delayTrain } = require('./timers');
 const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers');
 const { CronJob } = require('cron');
+const { setSocketServer, emitTrainList, emitTrainDetails, emitLocationSnapshot } = require('./socketEvents');
 
 const exportMessages = {};
 
@@ -16,7 +19,36 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: '*',
+        methods: ['GET', 'POST']
+    }
+});
+setSocketServer(io);
+
 const PORT = process.env.PORT || 80;
+
+function emitSocketError(socket, eventName, error, details = {}) {
+    socket.emit('error', {
+        event: eventName,
+        message: error?.message || error || 'Unknown error',
+        ...details
+    });
+}
+
+function normalizeSocketPayload(payload) {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        return {};
+    }
+
+    if (Object.prototype.hasOwnProperty.call(payload, 'query')) {
+        return payload.query && typeof payload.query === 'object' ? payload.query : {};
+    }
+
+    return payload;
+}
 
 function convertDates(obj) {
     for (const key in obj) {
@@ -56,7 +88,81 @@ function convertDates(obj) {
     }
 })();
 
-app.listen(PORT, '::', () => {
+io.on('connection', (socket) => {
+    const emitTrainList = async (payload = {}) => {
+        try {
+            const query = normalizeSocketPayload(payload);
+            const trainsList = await trains.find(query).exec();
+            socket.emit('trains:list', trainsList || []);
+        } catch (error) {
+            emitSocketError(socket, 'trains:get', error);
+        }
+    };
+
+    const emitTrainByNumber = async (payload = {}) => {
+        try {
+            const data = typeof payload === 'string' ? { trainNumber: payload } : (payload || {});
+            const { trainNumber } = data;
+
+            if (!trainNumber) {
+                return socket.emit('train:details', null);
+            }
+
+            const train = await trains.findOne({ trainNumber }).exec();
+            socket.emit('train:details', train || null);
+        } catch (error) {
+            emitSocketError(socket, 'train:get', error);
+        }
+    };
+
+    const emitStationArrivals = async (payload = {}) => {
+        try {
+            const data = typeof payload === 'string' ? { stationCode: payload } : (payload || {});
+            const { stationCode } = data;
+
+            if (!stationCode) {
+                return socket.emit('locations:arrivals', []);
+            }
+
+            socket.emit('locations:arrivals', locationsArrivals[stationCode] || []);
+        } catch (error) {
+            emitSocketError(socket, 'locations:arrivals:get', error);
+        }
+    };
+
+    const emitStationDepartures = async (payload = {}) => {
+        try {
+            const data = typeof payload === 'string' ? { stationCode: payload } : (payload || {});
+            const { stationCode } = data;
+
+            if (!stationCode) {
+                return socket.emit('locations:departures', []);
+            }
+
+            socket.emit('locations:departures', locationsDepartures[stationCode] || []);
+        } catch (error) {
+            emitSocketError(socket, 'locations:departures:get', error);
+        }
+    };
+
+    socket.on('trains', emitTrainList);
+    socket.on('trains:get', emitTrainList);
+    socket.on('getTrains', emitTrainList);
+    socket.on('train', emitTrainByNumber);
+    socket.on('train:get', emitTrainByNumber);
+    socket.on('getTrain', emitTrainByNumber);
+    socket.on('locations:arrivals', emitStationArrivals);
+    socket.on('locations:arrivals:get', emitStationArrivals);
+    socket.on('getStationArrivals', emitStationArrivals);
+    socket.on('locations:departures', emitStationDepartures);
+    socket.on('locations:departures:get', emitStationDepartures);
+    socket.on('getStationDepartures', emitStationDepartures);
+    socket.on('disconnect', () => {
+        // no-op: connection cleanup handled by Socket.IO
+    });
+});
+
+httpServer.listen(PORT, '::', () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
@@ -117,6 +223,8 @@ app.post('/trains', checkApiKey, async (req, res) => {
         });
 
         await newTrain.save();
+        await emitTrainList();
+        await emitTrainDetails(trainNumber);
         res.status(201).json(newTrain);
     } catch (error) {
         console.error('Error saving train:', error);
@@ -200,6 +308,8 @@ app.patch('/trains/:trainNumber', checkApiKey, async (req, res) => {
         ).exec();
 
         if (!updatedTrain) return res.status(404).json({ error: 'Train not found' });
+        await emitTrainList();
+        await emitTrainDetails(updatedTrain.trainNumber);
         res.status(200).json(updatedTrain);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -329,6 +439,8 @@ app.patch('/trains/:trainNumber/delay', checkApiKey, async (req, res) => {
         train.markModified('currentRoute');
 
         await train.save();
+        await emitTrainList();
+        await emitTrainDetails(trainNumber);
         res.status(200).json(train);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -363,6 +475,8 @@ app.patch('/trains/:trainNumber/cancel', checkApiKey, async (req, res) => {
 
         train.markModified('currentRoute');
         await train.save();
+        await emitTrainList();
+        await emitTrainDetails(trainNumber);
         res.json({ train });
 
     } catch (err) {
@@ -400,6 +514,8 @@ app.put('/trains/:trainNumber', checkApiKey, async (req, res) => {
             { new: true, upsert: true, runValidators: true }
         ).exec();
 
+        await emitTrainList();
+        await emitTrainDetails(updatedTrain.trainNumber);
         res.json(updatedTrain);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -413,6 +529,7 @@ app.delete('/trains/:trainNumber', checkApiKey, async (req, res) => {
     try {
         const deletedTrain = await trains.findOneAndDelete({ trainNumber }).exec();
         if (!deletedTrain) return res.status(404).json({ error: 'Train not found' });
+        await emitTrainList();
         res.status(204).send();
     } catch (error) {
         res.status(500).json({ error: error.message });
