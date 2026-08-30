@@ -26,14 +26,6 @@ const io = new Server(httpServer, {
         methods: ['GET', 'POST']
     }
 });
-io.use((socket, next) => {
-    const providedKey = socket.handshake.auth?.key || socket.handshake.headers?.key;
-    if (providedKey && providedKey === process.env.API_KEY) {
-        return next();
-    }
-
-    return next(new Error('Unauthorized'));
-});
 setSocketServer(io);
 
 const PORT = process.env.PORT || 80;
