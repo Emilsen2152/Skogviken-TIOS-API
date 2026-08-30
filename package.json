@@ -14,7 +14,6 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "luxon": "^3.5.0",
-    "mongoose": "^8.12.1",
-    "socket.io": "^4.8.3"
+    "mongoose": "^8.12.1"
   }
 }
