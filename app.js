@@ -416,6 +416,7 @@ app.delete('/trains/:trainNumber', checkApiKey, async (req, res) => {
     try {
         const deletedTrain = await trains.findOneAndDelete({ trainNumber }).exec();
         if (!deletedTrain) return res.status(404).json({ error: 'Train not found' });
+        await fidoTrainClaims.deleteOne({ trainNumber }).exec();
         res.status(204).send();
     } catch (error) {
         res.status(500).json({ error: error.message });

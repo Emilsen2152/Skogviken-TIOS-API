@@ -1,6 +1,7 @@
 const CronJob = require('cron').CronJob;
 const trains = require('./utils/train');
 const servers = require('./utils/server');
+const fidoTrainClaims = require('./utils/fido-trainClaims');
 const { DateTime } = require('luxon');
 
 console.log('Timers are running...');
@@ -146,6 +147,7 @@ async function dayReset() {
     for (const train of allTrains) {
         if (train.extraTrain) {
             await train.deleteOne();
+            await fidoTrainClaims.deleteOne({ trainNumber: train.trainNumber }).exec();
         } else {
             train.currentRoute = train.defaultRoute.map(station => {
                 const {
