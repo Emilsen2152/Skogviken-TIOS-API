@@ -3,7 +3,7 @@ const { Schema } = mongoose;
 
 const fidoAnnouncementsSchema = new Schema({
 	announcementNumber: {
-		type: Number,
+		type: String,
 		required: true,
 		unique: true // Ensures no duplicates
 	},

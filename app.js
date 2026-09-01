@@ -1085,6 +1085,13 @@ app.post('/fido/announcements', checkApiKey, async (req, res) => {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    // Check if announcementNumber follows format: 001, 002 etc. (3 digits)
+    const announcementNumberRegex = /^\d{3}$/;
+
+    if (!announcementNumberRegex.test(announcementNumber)) {
+        return res.status(400).json({ error: 'Invalid announcementNumber format. Must be 3 digits.' });
+    }
+
     try {
         const existingAnnouncement = await fidoAnnouncements.findOne({ announcementNumber }).exec();
         if (existingAnnouncement) return res.status(409).json({ error: 'Announcement already exists' });
