@@ -6,6 +6,9 @@ const { DateTime } = require('luxon');
 const trains = require('./utils/train');
 const servers = require('./utils/server');
 const disruptions = require('./utils/disruptions');
+const fidoAnnouncements = require('./utils/fido-announcements');
+const fidoTrainClaims = require('./utils/fido-trainClaims');
+const fidoGsmRNumbers = require('./utils/fido-gsm-rNumbers');
 const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset, delayTrain } = require('./timers');
 const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers');
 const { CronJob } = require('cron');
@@ -960,6 +963,78 @@ app.get('/exportMessages/:messageId', checkApiKey, (req, res) => {
 
 app.get('/journey', (req, res) => {
     return res.status(501).json({ error: 'Not implemented', message: 'Journey endpoint is not implemented yet' });
+});
+
+app.get('/fido/trainClaims', checkApiKey, async (req, res) => {
+    try {
+        const trainClaims = await fidoTrainClaims.find().exec();
+        res.status(200).json(trainClaims);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/fido/trainClaims/train/:trainNumber', checkApiKey, async (req, res) => {
+    const { trainNumber } = req.params;
+
+    try {
+        const trainClaim = await fidoTrainClaims.findOne({ trainNumber }).exec();
+        if (!trainClaim) return res.status(404).json({ error: 'Train claim not found' });
+        res.status(200).json(trainClaim);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/fido/trainClaims/user/:tiosUser', checkApiKey, async (req, res) => {
+    const { tiosUser } = req.params;
+
+    try {
+        const trainClaims = await fidoTrainClaims.find({ tiosUser }).exec();
+        if (!trainClaims || trainClaims.length === 0) return res.status(404).json({ error: 'No train claims found for this user' });
+        res.status(200).json(trainClaims);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/fido/trainClaims', checkApiKey, async (req, res) => {
+    const { trainNumber, tiosUser } = req.body;
+
+    if (!trainNumber || !tiosUser) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    try {
+        const existingClaim = await fidoTrainClaims.findOne({ trainNumber }).exec();
+        if (existingClaim) return res.status(409).json({ error: 'Train claim already exists' });
+
+        const newTrainClaim = new fidoTrainClaims({ trainNumber, tiosUser });
+        await newTrainClaim.save();
+        res.status(201).json(newTrainClaim);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/fido/trainsWithClaims', checkApiKey, async (req, res) => {
+    // Get all trains and all claims, merge them based on trainNumber, for trains without claims, set tiosUser to null
+    try {
+        const allTrains = await trains.find().exec();
+        const allClaims = await fidoTrainClaims.find().exec();
+
+        const trainsWithClaims = allTrains.map(train => {
+            const claim = allClaims.find(c => c.trainNumber === train.trainNumber);
+            return {
+                ...train.toObject(),
+                tiosUser: claim ? claim.tiosUser : null
+            };
+        });
+
+        res.status(200).json(trainsWithClaims);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // Start timers
