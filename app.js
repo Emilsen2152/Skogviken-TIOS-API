@@ -171,9 +171,9 @@ app.get('/trains', checkApiKey, async (req, res) => {
     try {
         // Read query parameters from URL string or default to fetching all trains {}
         const query = (req.query && Object.keys(req.query).length > 0) ? req.query : {};
-        
+
         const trainsList = await trains.find(query).exec();
-        
+
         // Return empty list if no trains match
         res.json(trainsList || []);
     } catch (error) {
@@ -228,7 +228,7 @@ app.get('/trains/:trainNumber/route/:locationCode/arrival/delay', async (req, re
         const arrivalMinutes = defaultLocation.arrival.minutes;
 
         const defaultArrivalTime = DateTime.fromObject(
-            { year: arrival.year, month: arrival.month, day: arrival.day, hour: arrivalHours, minute: arrivalMinutes }, 
+            { year: arrival.year, month: arrival.month, day: arrival.day, hour: arrivalHours, minute: arrivalMinutes },
             { zone: 'Europe/Oslo' }
         );
 
@@ -259,7 +259,7 @@ app.get('/trains/:trainNumber/route/:locationCode/departure/delay', async (req, 
         const departureMinutes = defaultLocation.departure.minutes;
 
         const defaultDepartureTime = DateTime.fromObject(
-            { year: departure.year, month: departure.month, day: departure.day, hour: departureHours, minute: departureMinutes }, 
+            { year: departure.year, month: departure.month, day: departure.day, hour: departureHours, minute: departureMinutes },
             { zone: 'Europe/Oslo' }
         );
 
@@ -588,7 +588,7 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
         if (
             continuationTrain &&
             String(continuationTrain.trainNumber) ===
-                String(primaryTrain.continuesAs)
+            String(primaryTrain.continuesAs)
         ) {
             primaryTrain = continuationTrain;
             primaryTrainIndex++;
@@ -1032,6 +1032,258 @@ app.get('/fido/trainsWithClaims', checkApiKey, async (req, res) => {
         });
 
         res.status(200).json(trainsWithClaims);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/fido/trainClaims/:trainNumber/claim', checkApiKey, async (req, res) => {
+    const { trainNumber } = req.params;
+    const { tiosUser } = req.body;
+
+    if (!tiosUser) {
+        return res.status(400).json({ error: 'Missing required field: tiosUser' });
+    }
+
+    try {
+        const existingClaim = await fidoTrainClaims.findOne({ trainNumber }).exec();
+        if (existingClaim) return res.status(409).json({ error: 'Train claim already exists' });
+
+        const newTrainClaim = new fidoTrainClaims({ trainNumber, tiosUser });
+        await newTrainClaim.save();
+        res.status(201).json(newTrainClaim);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/fido/trainClaims/:trainNumber', checkApiKey, async (req, res) => {
+    const { trainNumber } = req.params;
+
+    try {
+        const deletedClaim = await fidoTrainClaims.findOneAndDelete({ trainNumber }).exec();
+        if (!deletedClaim) return res.status(404).json({ error: 'Train claim not found' });
+        res.status(204).send();
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/fido/announcements', checkApiKey, async (req, res) => {
+    try {
+        const announcements = await fidoAnnouncements.find().exec();
+        res.status(200).json(announcements);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/fido/announcements', checkApiKey, async (req, res) => {
+    const { announcementNumber, announcementName, stations, announcement, startDate, endDate } = req.body;
+
+    if (!announcementNumber || !announcementName || !stations || !announcement || !startDate || !endDate) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    try {
+        const existingAnnouncement = await fidoAnnouncements.findOne({ announcementNumber }).exec();
+        if (existingAnnouncement) return res.status(409).json({ error: 'Announcement already exists' });
+
+        const newAnnouncement = new fidoAnnouncements({
+            announcementNumber,
+            announcementName,
+            stations,
+            announcement,
+            startDate: new Date(startDate),
+            endDate: new Date(endDate)
+        });
+        await newAnnouncement.save();
+        res.status(201).json(newAnnouncement);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/fido/announcements/:announcementNumber', checkApiKey, async (req, res) => {
+    const { announcementNumber } = req.params;
+    const { announcementName, stations, announcement, startDate, endDate } = req.body;
+
+    if (!announcementName || !stations || !announcement || !startDate || !endDate) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    try {
+        const updatedAnnouncement = await fidoAnnouncements.findOneAndUpdate(
+            { announcementNumber },
+            {
+                announcementName,
+                stations,
+                announcement,
+                startDate: new Date(startDate),
+                endDate: new Date(endDate)
+            },
+            { new: true }
+        ).exec();
+        if (!updatedAnnouncement) return res.status(404).json({ error: 'Announcement not found' });
+        res.status(200).json(updatedAnnouncement);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.patch('/fido/announcements/:announcementNumber/sign', checkApiKey, async (req, res) => {
+    const { announcementNumber } = req.params;
+    const { tiosUser } = req.body;
+
+    if (!tiosUser) {
+        return res.status(400).json({ error: 'Missing required field: tiosUser' });
+    }
+
+    // signedBy is an array of strings, we need to add tiosUser to the array if it doesn't already exist
+    try {
+        const announcement = await fidoAnnouncements.findOne({ announcementNumber }).exec();
+        if (!announcement) return res.status(404).json({ error: 'Announcement not found' });
+
+        if (!announcement.signedBy.includes(tiosUser)) {
+            announcement.signedBy.push(tiosUser);
+            await announcement.save();
+        }
+
+        res.status(200).json(announcement);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/fido/announcements/:announcementNumber', checkApiKey, async (req, res) => {
+    const { announcementNumber } = req.params;
+
+    try {
+        const deletedAnnouncement = await fidoAnnouncements.findOneAndDelete({ announcementNumber }).exec();
+        if (!deletedAnnouncement) return res.status(404).json({ error: 'Announcement not found' });
+        res.status(204).send();
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/fido/announcements/:announcementNumber', checkApiKey, async (req, res) => {
+    const { announcementNumber } = req.params;
+
+    try {
+        const announcement = await fidoAnnouncements.findOne({ announcementNumber }).exec();
+        if (!announcement) return res.status(404).json({ error: 'Announcement not found' });
+        res.status(200).json(announcement);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/fido/detailedTrainInfo/:trainNumber', checkApiKey, async (req, res) => {
+    const { trainNumber } = req.params;
+
+    // Send trainInfo, Claims, and Announcements in one response
+
+    // The announcements should be filtered to only include announcements that are relevant to the train's route (stations) and if the announcement is active (startDate <= now <= endDate)
+
+    try {
+        const trainInfo = await trains.findOne({ trainNumber }).exec();
+        if (!trainInfo) return res.status(404).json({ error: 'Train not found' });
+
+        const claim = await fidoTrainClaims.findOne({ trainNumber }).exec();
+
+        const now = new Date();
+        const announcements = await fidoAnnouncements.find({
+            stations: { $in: trainInfo.currentRoute.map(stop => stop.code) },
+            startDate: { $lte: now },
+            endDate: { $gte: now }
+        }).exec();
+
+        res.status(200).json({
+            trainInfo,
+            claim,
+            announcements
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/fido/gsmr', checkApiKey, async (req, res) => {
+    try {
+        const gsmrNumbers = await fidoGsmRNumbers.find().exec();
+
+        res.status(200).json(gsmrNumbers);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/fido/gsmr', checkApiKey, async (req, res) => {
+    const { GSMRNumber, tiosUser, role, location } = req.body;
+
+    // Location is required for all roles except: "driver" and "coss".
+    // For conductors, the location must be the name of the train driver they are working with.
+
+    if (!GSMRNumber || !tiosUser || !role) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (role !== 'driver' && role !== 'coss' && !location) {
+        return res.status(400).json({ error: 'Location is required for this role' });
+    }
+
+    try {
+        const gsmr = new fidoGsmRNumbers({ GSMRNumber, tiosUser, role, location });
+        await gsmr.save();
+        res.status(201).json(gsmr);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/fido/gsmr/:GSMRNumber', checkApiKey, async (req, res) => {
+    const { GSMRNumber } = req.params;
+
+    try {
+        const gsmr = await fidoGsmRNumbers.findOne({ GSMRNumber }).exec();
+        if (!gsmr) return res.status(404).json({ error: 'GSMR number not found' });
+        res.status(200).json(gsmr);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/fido/gsmr/:GSMRNumber', checkApiKey, async (req, res) => {
+    const { GSMRNumber } = req.params;
+    const { tiosUser, role, location } = req.body;
+
+    if (!tiosUser || !role) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (role !== 'driver' && role !== 'coss' && !location) {
+        return res.status(400).json({ error: 'Location is required for this role' });
+    }
+
+    try {
+        const gsmr = await fidoGsmRNumbers.findOneAndUpdate({ GSMRNumber }, { tiosUser, role, location }, { new: true }).exec();
+        if (!gsmr) return res.status(404).json({ error: 'GSMR number not found' });
+        res.status(200).json(gsmr);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/fido/gsmr/:GSMRNumber', checkApiKey, async (req, res) => {
+    const { GSMRNumber } = req.params;
+
+    try {
+        const deletedGsmr = await fidoGsmRNumbers.findOneAndDelete({ GSMRNumber }).exec();
+
+        if (!deletedGsmr) return res.status(404).json({ error: 'GSMR number not found' });
+
+        res.status(204).send();
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

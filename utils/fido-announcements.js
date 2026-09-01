@@ -2,10 +2,14 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const fidoAnnouncementsSchema = new Schema({
+	announcementNumber: {
+		type: Number,
+		required: true,
+		unique: true // Ensures no duplicates
+	},
 	announcementName: {
 		type: String,
 		required: true,
-		unique: true // Ensures no duplicates
 	},
 	stations: {
 		type: [String],
@@ -25,7 +29,7 @@ const fidoAnnouncementsSchema = new Schema({
 	},
 	signedBy: {
 		type: [String],
-		required: true
+		default: []
 	}
 }, { minimize: false });
 
