@@ -976,7 +976,7 @@ const JOURNEY_CONFIG = {
 
     // How long the timetable index is kept in memory.
     // Keep this fairly short because train data can change.
-    CACHE_TTL_MS: 15_000,
+    CACHE_TTL_MS: 60_000,
 
     // Prevent an unusually large search from consuming the server.
     MAX_SEARCH_STATES: 25_000
