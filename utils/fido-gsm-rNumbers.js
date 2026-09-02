@@ -14,7 +14,7 @@ const fidoGsmRNumbersSchema = new Schema({
 	role: {
 		type: String,
 		required: true,
-		enum: ['conductor', 'driver', 'dispatcher', 'signaller', 'train_information', 'coss', 'scheduling_office']
+		enum: ['conductor', 'driver_trainee', 'driver', 'dispatcher_trainee', 'dispatcher', 'signaller_trainee', 'signaller', 'train_information_trainee', 'train_information', 'coss', 'scheduling_office']
 	},
 	location: {
 		type: String,
