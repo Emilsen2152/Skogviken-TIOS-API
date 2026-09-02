@@ -1523,7 +1523,7 @@ function formatJourneyResult(journey) {
 // GET /journey
 // ============================================================
 
-app.get('/entur/journey', async (req, res) => {
+app.get('/entur/journey', checkApiKey, async (req, res) => {
     const {
         startStation,
         endStation,
