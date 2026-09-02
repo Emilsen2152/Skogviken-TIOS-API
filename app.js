@@ -1201,19 +1201,22 @@ app.get('/fido/detailedTrainInfo/:trainNumber', checkApiKey, async (req, res) =>
             endDate: { $gte: now }
         }).exec();
 
-        // Add the staffed info inside the currentRoute of the trainInfo, if not found dont add anything
+        const trainInfoData = trainInfo.toObject();
+        const staffingRecords = await staffed.find({
+            stationCode: { $in: trainInfoData.currentRoute.map(stop => stop.code) },
+            staffed: true
+        }).lean().exec();
+        const staffingTypeByStationCode = new Map(
+            staffingRecords.map(record => [record.stationCode, record.staffingType])
+        );
 
-        trainInfo.currentRoute = await Promise.all(trainInfo.currentRoute.map(async stop => {
-                const staffingRecord = await staffed.findOne({ stationCode: stop.code }).exec();
-                if (staffingRecord) {
-                    stop.staffed = staffingRecord.staffed;
-                    stop.staffingType = staffingRecord.staffingType;
-            }
-            return stop;
-        }));
+        trainInfoData.currentRoute = trainInfoData.currentRoute.map(stop => {
+            const staffingType = staffingTypeByStationCode.get(stop.code);
+            return staffingType ? { ...stop, staffingType } : stop;
+        });
 
         res.status(200).json({
-            trainInfo,
+            trainInfo: trainInfoData,
             claim,
             announcements
         });
