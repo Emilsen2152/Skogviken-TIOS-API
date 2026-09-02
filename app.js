@@ -9,6 +9,7 @@ const disruptions = require('./utils/disruptions');
 const fidoAnnouncements = require('./utils/fido-announcements');
 const fidoTrainClaims = require('./utils/fido-trainClaims');
 const fidoGsmRNumbers = require('./utils/fido-gsm-rNumbers.js');
+const staffed = require('./utils/staffed.js');
 const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset, delayTrain } = require('./timers');
 const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers');
 const { CronJob } = require('cron');
@@ -1285,6 +1286,103 @@ app.delete('/fido/gsmr/:GSMRNumber', checkApiKey, async (req, res) => {
         if (!deletedGsmr) return res.status(404).json({ error: 'GSMR number not found' });
 
         res.status(204).send();
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/fido/staffed', checkApiKey, async (req, res) => {
+    try {
+        const staffedData = await staffed.find().exec();
+        res.status(200).json(staffedData);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/fido/staffed/:stationCode', checkApiKey, async (req, res) => {
+    const { stationCode } = req.params;
+
+    try {
+        const staffedData = await staffed.findOne({ stationCode }).exec();
+        if (!staffedData) return res.status(404).json({ error: 'Staffed data not found for this station' });
+        res.status(200).json(staffedData);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/fido/staffed', checkApiKey, async (req, res) => {
+    const { stationCode, staffingType } = req.body;
+
+    if (!stationCode || !staffingType) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    try {
+        const newStaffed = new staffed({ stationCode, staffingType, staffed: false });
+        await newStaffed.save();
+        res.status(201).json(newStaffed);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.patch('/fido/staffed/:stationCode', checkApiKey, async (req, res) => {
+    const { stationCode } = req.params;
+    const { staffed: staffedStatus } = req.body;
+
+    if (typeof staffedStatus !== 'boolean') {
+        return res.status(400).json({ error: 'Missing or invalid staffed status' });
+    }
+
+    try {
+        const updatedStaffed = await staffed.findOneAndUpdate(
+            { stationCode },
+            { staffed: staffedStatus },
+            { new: true }
+        ).exec();
+
+        if (!updatedStaffed) return res.status(404).json({ error: 'Staffed data not found for this station' });
+
+        res.status(200).json(updatedStaffed);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/fido/staffed/:stationCode', checkApiKey, async (req, res) => {
+    const { stationCode } = req.params;
+    const { staffingType, staffed: staffedStatus } = req.body;
+
+    if (!staffingType || typeof staffedStatus !== 'boolean') {
+        return res.status(400).json({ error: 'Missing or invalid fields' });
+    }
+
+    try {
+        const updatedStaffed = await staffed.findOneAndUpdate(
+            { stationCode },
+            { staffingType, staffed: staffedStatus },
+            { new: true }
+        ).exec();
+
+        if (!updatedStaffed) return res.status(404).json({ error: 'Staffed data not found for this station' });
+
+        res.status(200).json(updatedStaffed);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/fido/staffed/:stationCode', checkApiKey, async (req, res) => {
+    const { stationCode } = req.params;
+
+    try {
+        const deletedStaffed = await staffed.findOneAndDelete({ stationCode }).exec();
+
+        if (!deletedStaffed) return res.status(404).json({ error: 'Staffed data not found for this station' });
+
+        res.status(200).json({ message: 'Staffed data deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
