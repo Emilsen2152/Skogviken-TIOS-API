@@ -145,9 +145,10 @@ async function dayReset() {
     const allTrains = await trains.find({});
 
     for (const train of allTrains) {
+        await fidoTrainClaims.deleteOne({ trainNumber: train.trainNumber }).exec();
+
         if (train.extraTrain) {
             await train.deleteOne();
-            await fidoTrainClaims.deleteOne({ trainNumber: train.trainNumber }).exec();
         } else {
             train.currentRoute = train.defaultRoute.map(station => {
                 const {
