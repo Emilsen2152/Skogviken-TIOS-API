@@ -972,7 +972,7 @@ const JOURNEY_CONFIG = {
     MAX_RESULTS: 5,
 
     // Minimum time required to transfer between trains.
-    MIN_TRANSFER_MINUTES: 2,
+    MIN_TRANSFER_MINUTES: 1,
 
     // How long the timetable index is kept in memory.
     // Keep this fairly short because train data can change.
