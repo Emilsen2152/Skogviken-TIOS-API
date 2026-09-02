@@ -963,8 +963,6 @@ app.get('/exportMessages/:messageId', checkApiKey, (req, res) => {
     res.status(200).json({ message: exportMessages[messageId] });
 });
 
-const { DateTime } = require('luxon');
-
 // ============================================================
 // Journey search configuration
 // ============================================================
