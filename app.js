@@ -1385,7 +1385,7 @@ app.post('/fido/gsmr', checkApiKey, async (req, res) => {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    if (role !== 'driver' && role !== 'coss' && !location) {
+    if (role !== 'driver' && role !== 'coss' && role !== 'driver_trainee' && !location) {
         return res.status(400).json({ error: 'Location is required for this role' });
     }
 
