@@ -223,6 +223,55 @@ function calculateDelay(actual, planned) {
     return (actual.toMillis() - planned.toMillis()) / 60_000;
 }
 
+const PREPARING_MESSAGE = {
+    yellow: true,
+    message: {
+        NOR: 'Vi jobber med å klargjøre toget',
+        ENG: 'We are preparing this train'
+    }
+};
+
+const STAFF_SHORTAGE_MESSAGE = {
+    yellow: true,
+    message: {
+        NOR: 'Innstilt på grunn av manglende personale',
+        ENG: 'Cancelled due to staff shortage'
+    }
+};
+
+function isMessage(message, messageDefinition) {
+    return message.yellow === messageDefinition.yellow &&
+        message.message?.NOR === messageDefinition.message.NOR &&
+        message.message?.ENG === messageDefinition.message.ENG;
+}
+
+function upsertTrainMessage(train, messageDefinition, from, to) {
+    const existingMessage = train.messages.find(message => isMessage(message, messageDefinition));
+
+    if (existingMessage) {
+        existingMessage.from = from;
+        existingMessage.to = to;
+    } else {
+        train.messages.push({
+            ...messageDefinition,
+            from,
+            to
+        });
+    }
+}
+
+function cancelTrainForStaffShortage(train, now) {
+    train.currentRoute.forEach(location => {
+        if (!location.passed) location.cancelledAtStation = true;
+    });
+
+    train.messages = train.messages.filter(message => !isMessage(message, PREPARING_MESSAGE));
+
+    const endOfDay = now.endOf('day').toJSDate();
+    upsertTrainMessage(train, STAFF_SHORTAGE_MESSAGE, now.toJSDate(), endOfDay);
+    train.markModified('currentRoute');
+}
+
 async function updateLocations() {
     const allTrains = await trains.find({});
     const newLocationsArrivals = Object.fromEntries(Object.keys(LOCATION_CODES).map(k => [k, {}]));
@@ -230,8 +279,12 @@ async function updateLocations() {
     const newLocationNames = { ...LOCATION_CODES };
 
     const isRailwayActiveNow = await isRailwayActive();
+    const claimedTrainNumbers = new Set(
+        (await fidoTrainClaims.find({}).lean().exec()).map(claim => claim.trainNumber)
+    );
     const currentDate = new Date();
     currentDate.setSeconds(0, 0);
+    const currentNorwegianTime = DateTime.now().setZone('Europe/Oslo');
 
     const modifiedTrains = [];
 
@@ -239,10 +292,27 @@ async function updateLocations() {
         let train = allTrains[i];
         let routeModified = false;
 
+        const firstDefaultStop = train.defaultRoute[0];
+        const defaultDeparture = firstDefaultStop?.departure;
+        const defaultDepartureTime = defaultDeparture
+            ? DateTime.fromObject(
+                {
+                    year: currentNorwegianTime.year,
+                    month: currentNorwegianTime.month,
+                    day: currentNorwegianTime.day,
+                    hour: defaultDeparture.hours,
+                    minute: defaultDeparture.minutes
+                },
+                { zone: 'Europe/Oslo' }
+            )
+            : null;
+        const isDefaultDepartureOverdue = defaultDepartureTime?.isValid &&
+            currentNorwegianTime >= defaultDepartureTime;
+        const isUnclaimed = !claimedTrainNumbers.has(train.trainNumber);
+
         if (
             !isRailwayActiveNow &&
-            train.currentRoute.length > 0 &&
-            train.currentRoute[0].arrival.getTime() < Date.now()
+            isDefaultDepartureOverdue
         ) {
             console.log(`Marking all locations as cancelled for train: ${train.trainNumber}`);
             train.currentRoute.forEach(location => {
@@ -250,6 +320,21 @@ async function updateLocations() {
                 location.cancelledAtStation = true;
                 routeModified = true;
             });
+        }
+
+        if (isRailwayActiveNow && isDefaultDepartureOverdue && isUnclaimed) {
+            if (currentNorwegianTime >= defaultDepartureTime.plus({ minutes: 10 })) {
+                cancelTrainForStaffShortage(train, currentNorwegianTime);
+                routeModified = true;
+            } else {
+                upsertTrainMessage(
+                    train,
+                    PREPARING_MESSAGE,
+                    currentNorwegianTime.toJSDate(),
+                    currentNorwegianTime.plus({ minutes: 10 }).toJSDate()
+                );
+                routeModified = true;
+            }
         }
 
         for (let currentIndex = 0; currentIndex < train.currentRoute.length; currentIndex++) {
