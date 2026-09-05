@@ -1348,11 +1348,13 @@ app.get('/fido/detailedTrainInfo/:trainNumber', checkApiKey, async (req, res) =>
 
         const trainInfoData = trainInfo.toObject();
         const staffingRecords = await staffed.find({
-            stationCode: { $in: trainInfoData.currentRoute.map(stop => stop.code) },
-            staffed: true
+            stationCode: { $in: trainInfoData.currentRoute.map(stop => stop.code) }
         }).lean().exec();
         const staffingTypeByStationCode = new Map(
-            staffingRecords.map(record => [record.stationCode, record.staffingType])
+            staffingRecords.map(record => [
+                record.stationCode,
+                record.staffed ? record.staffingType : 'unstaffed'
+            ])
         );
 
         trainInfoData.currentRoute = trainInfoData.currentRoute.map(stop => {
