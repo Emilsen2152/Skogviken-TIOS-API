@@ -608,57 +608,62 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
 
     let result = [primaryTrain];
 
-    /*
-     * Find the next different train chronologically.
-     */
-    const nextTrainAfterPrimary = validTrains
-        .slice(primaryTrainIndex + 1)
-        .find(train =>
-            String(train.trainNumber) !==
-            String(primaryTrain.trainNumber)
-        );
+    while (result.length < 3) {
+        const previousTrain = result[result.length - 1];
 
-    /*
-     * Find the next train that is ACTUALLY assigned to the
-     * requested track.
-     */
-    const nextTrainOnRequestedTrack = validTrains.find(train =>
-        String(train.trainNumber) !== String(primaryTrain.trainNumber) &&
-        String(train.track) === String(trackNumber)
-    );
+        if (movedFromTrack) {
+            /*
+             * The primary train is associated with this track through
+             * defaultTrack but has been moved elsewhere. Show trains
+             * actually using the requested track.
+             */
+            const nextTrainOnRequestedTrack = validTrains.find(train =>
+                !result.some(displayedTrain =>
+                    String(displayedTrain.trainNumber) === String(train.trainNumber)
+                ) && String(train.track) === String(trackNumber)
+            );
 
-    if (movedFromTrack) {
-        /*
-         * Primary train is associated with this track through
-         * defaultTrack, but has been moved elsewhere.
-         *
-         * Therefore show the next train actually using this track.
-         */
-        if (nextTrainOnRequestedTrack) {
+            if (!nextTrainOnRequestedTrack) {
+                break;
+            }
+
             result.push(nextTrainOnRequestedTrack);
+            continue;
         }
-    } else if (nextTrainAfterPrimary) {
+
         /*
          * In normal operation, show the following train if its
-         * departure is within 10 minutes of the primary train.
+         * departure is within 10 minutes of the prior displayed train.
          */
-        const firstTime = getTrainTime(primaryTrain);
-        const nextTime = getTrainTime(nextTrainAfterPrimary);
+        const previousTrainIndex = validTrains.indexOf(previousTrain);
+        const nextTrain = validTrains
+            .slice(previousTrainIndex + 1)
+            .find(train =>
+                !result.some(displayedTrain =>
+                    String(displayedTrain.trainNumber) === String(train.trainNumber)
+                )
+            );
+
+        if (!nextTrain) {
+            break;
+        }
 
         const diffMinutes =
-            (nextTime - firstTime) / 60000;
+            (getTrainTime(nextTrain) - getTrainTime(previousTrain)) / 60000;
 
-        if (diffMinutes <= 10) {
-            result.push(nextTrainAfterPrimary);
+        if (diffMinutes > 10) {
+            break;
         }
+
+        result.push(nextTrain);
     }
 
     /*
-     * Never return more than two trains.
+     * Never return more than three trains.
      */
     result = result
         .filter(Boolean)
-        .slice(0, 2);
+        .slice(0, 3);
 
     return res.status(200).json(result);
 });
