@@ -438,7 +438,7 @@ app.get('/locations/:stationCode/departures', (req, res) => {
     res.json(locationsDepartures[stationCode]);
 });
 
-app.get('/locations/:stationCode/train/:trainNumber', (req, res) => {
+app.get('/locations/:stationCode/trains/:trainNumber', (req, res) => {
     const { stationCode, trainNumber } = req.params;
     const arrivals = locationsArrivals[stationCode] || [];
     const departures = locationsDepartures[stationCode] || [];
