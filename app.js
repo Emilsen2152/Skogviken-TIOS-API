@@ -618,6 +618,9 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
         String(primaryTrain.track) !== String(trackNumber) &&
         String(primaryTrain.defaultTrack) === String(trackNumber);
 
+    const hasTrackChanged = (train) =>
+        String(train.track) !== String(train.defaultTrack);
+
     let result = [primaryTrain];
 
     while (result.length < 3) {
@@ -639,6 +642,13 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
                 break;
             }
 
+            if (
+                result.length >= 2 &&
+                hasTrackChanged(nextTrainOnRequestedTrack)
+            ) {
+                break;
+            }
+
             result.push(nextTrainOnRequestedTrack);
             continue;
         }
@@ -657,6 +667,10 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
             );
 
         if (!nextTrain) {
+            break;
+        }
+
+        if (result.length >= 2 && hasTrackChanged(nextTrain)) {
             break;
         }
 
