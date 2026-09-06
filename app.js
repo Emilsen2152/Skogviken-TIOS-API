@@ -491,41 +491,64 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
     const arrivals = locationsArrivals[stationCode] || [];
     const departures = locationsDepartures[stationCode] || [];
 
+    const requestedTrack = String(trackNumber);
+
     const isForTrack = (train) => {
         return (
-            String(train.track) === String(trackNumber) ||
-            String(train.defaultTrack) === String(trackNumber)
+            String(train.track) === requestedTrack ||
+            String(train.defaultTrack) === requestedTrack
         );
     };
 
     /*
-     * All trains are guaranteed to have a departure time.
-     * Departure is therefore the ONLY time used for ordering
-     * and time comparisons.
+     * All trains have departure, so departure is always used
+     * for ordering/time comparisons.
      */
     const getTrainTime = (train) => new Date(train.departure);
 
     /*
-     * Combine arrivals and departures and keep only trains
-     * associated with the requested track.
+     * IMPORTANT:
+     * Tag entries based on which array they actually came from.
+     *
+     * We cannot use !!train.departure because arrival entries
+     * also contain a departure timestamp.
      */
-    const combined = [...arrivals, ...departures].filter(isForTrack);
+    const combined = [
+        ...arrivals.map(train => ({
+            ...train,
+            isDeparture: false
+        })),
 
-    // Filter out non passenger trains
+        ...departures.map(train => ({
+            ...train,
+            isDeparture: true
+        }))
+    ].filter(isForTrack);
+
+    /*
+     * Only passenger trains.
+     *
+     * stopType in the API data is "passenger", lowercase.
+     * toLowerCase() also makes this tolerant of older data.
+     */
     const passengerTrains = combined.filter(train => {
-        return train.stopType === 'Passenger';
+        return String(train.stopType).toLowerCase() === 'passenger';
     });
 
     /*
-     * Ignore trains that have already passed.
+     * Ignore trains that have passed this station.
      */
-    const upcomingTrains = passengerTrains.filter(train => !train.hasPassed);
+    const upcomingTrains = passengerTrains.filter(train => {
+        return !train.hasPassed;
+    });
 
     /*
-     * Deduplicate by train number.
+     * Deduplicate trains.
      *
-     * If the same train exists as both an arrival and departure,
-     * prefer the departure entry.
+     * A train can exist in both locationsArrivals and
+     * locationsDepartures at an intermediate station.
+     *
+     * Prefer the departure copy.
      */
     const uniqueTrainsMap = new Map();
 
@@ -534,67 +557,69 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
         const existingTrain = uniqueTrainsMap.get(trainNumber);
 
         if (!existingTrain) {
-            uniqueTrainsMap.set(trainNumber, {
-                ...train,
-                isDeparture: !!train.departure,
-            });
-
+            uniqueTrainsMap.set(trainNumber, train);
             continue;
         }
 
-        if (train.departure && !existingTrain.isDeparture) {
-            uniqueTrainsMap.set(trainNumber, {
-                ...train,
-                isDeparture: true,
-            });
+        if (train.isDeparture && !existingTrain.isDeparture) {
+            uniqueTrainsMap.set(trainNumber, train);
         }
     }
 
     const now = new Date();
 
     /*
-     * Remove:
-     * - trains cancelled at this station
-     * - trains whose departure has already happened
-     *
-     * Departure is guaranteed to exist.
+     * Sort ALL trains using departure.
      */
     const validTrains = Array.from(uniqueTrainsMap.values())
         .filter(train => {
-            if (train.isCancelledAtStation) {
+            const departureTime = getTrainTime(train);
+
+            if (Number.isNaN(departureTime.getTime())) {
+                console.warn(
+                    `Invalid departure time for train ${train.trainNumber}:`,
+                    train.departure
+                );
+
                 return false;
             }
 
-            return getTrainTime(train) > now;
+            return departureTime > now;
         })
-        /*
-         * ALWAYS sort by departure.
-         */
         .sort((a, b) => {
             return getTrainTime(a) - getTrainTime(b);
         });
 
     /*
-     * No upcoming trains.
+     * Nothing to display.
      */
     if (validTrains.length === 0) {
         return res.status(200).json([]);
     }
 
     /*
-     * validTrains is already sorted by departure.
+     * The first train is ALWAYS the next train associated
+     * with this platform.
      *
-     * Because both `track` and `defaultTrack` make a train
-     * eligible, the first train is always the next train
-     * associated with this track.
+     * This includes:
+     *
+     *   train.track === requestedTrack
+     *
+     * OR
+     *
+     *   train.defaultTrack === requestedTrack
+     *
+     * Therefore a train which has been moved away from this
+     * platform can still become the primary train so that the
+     * monitor can display the track-change information.
      */
     let primaryTrain = validTrains[0];
     let primaryTrainIndex = 0;
 
     /*
-     * If the primary train is an arrival that continues as
-     * another train, check whether the next train is its
-     * continuation.
+     * If an arriving train terminates here and continues as
+     * another service, prefer its continuation when that
+     * continuation immediately follows it.
      */
     if (!primaryTrain.isDeparture && primaryTrain.continuesAs) {
         const continuationTrain = validTrains[primaryTrainIndex + 1];
@@ -602,7 +627,7 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
         if (
             continuationTrain &&
             String(continuationTrain.trainNumber) ===
-            String(primaryTrain.continuesAs)
+                String(primaryTrain.continuesAs)
         ) {
             primaryTrain = continuationTrain;
             primaryTrainIndex++;
@@ -610,38 +635,58 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
     }
 
     /*
-     * The train is considered moved if its actual track differs
-     * from its default track, while its default track is the
-     * requested track.
+     * Has the primary train been moved away from this track?
+     *
+     * Example:
+     *
+     * requested track: 1
+     * defaultTrack:     1
+     * actual track:     2
      */
     const movedFromTrack =
-        String(primaryTrain.track) !== String(trackNumber) &&
-        String(primaryTrain.defaultTrack) === String(trackNumber);
+        String(primaryTrain.track) !== requestedTrack &&
+        String(primaryTrain.defaultTrack) === requestedTrack;
 
-    const hasTrackChanged = (train) =>
-        String(train.track) !== String(train.defaultTrack);
+    const hasTrackChanged = (train) => {
+        return String(train.track) !== String(train.defaultTrack);
+    };
 
-    let result = [primaryTrain];
+    const result = [primaryTrain];
 
+    /*
+     * Add up to two additional trains.
+     */
     while (result.length < 3) {
         const previousTrain = result[result.length - 1];
 
+        /*
+         * If the primary train has been moved away from this
+         * platform, subsequent entries should be trains which
+         * ACTUALLY use this platform.
+         */
         if (movedFromTrack) {
-            /*
-             * The primary train is associated with this track through
-             * defaultTrack but has been moved elsewhere. Show trains
-             * actually using the requested track.
-             */
-            const nextTrainOnRequestedTrack = validTrains.find(train =>
-                !result.some(displayedTrain =>
-                    String(displayedTrain.trainNumber) === String(train.trainNumber)
-                ) && String(train.track) === String(trackNumber)
-            );
+            const nextTrainOnRequestedTrack = validTrains.find(train => {
+                const alreadyDisplayed = result.some(displayedTrain => {
+                    return (
+                        String(displayedTrain.trainNumber) ===
+                        String(train.trainNumber)
+                    );
+                });
+
+                return (
+                    !alreadyDisplayed &&
+                    String(train.track) === requestedTrack
+                );
+            });
 
             if (!nextTrainOnRequestedTrack) {
                 break;
             }
 
+            /*
+             * Don't put another track-change train into the
+             * third position.
+             */
             if (
                 result.length >= 2 &&
                 hasTrackChanged(nextTrainOnRequestedTrack)
@@ -654,26 +699,43 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
         }
 
         /*
-         * In normal operation, show the following train if its
-         * departure is within 10 minutes of the prior displayed train.
+         * Normal operation.
+         *
+         * Find the train after the previously displayed train.
          */
         const previousTrainIndex = validTrains.indexOf(previousTrain);
+
         const nextTrain = validTrains
             .slice(previousTrainIndex + 1)
-            .find(train =>
-                !result.some(displayedTrain =>
-                    String(displayedTrain.trainNumber) === String(train.trainNumber)
-                )
-            );
+            .find(train => {
+                return !result.some(displayedTrain => {
+                    return (
+                        String(displayedTrain.trainNumber) ===
+                        String(train.trainNumber)
+                    );
+                });
+            });
 
         if (!nextTrain) {
             break;
         }
 
-        if (result.length >= 2 && hasTrackChanged(nextTrain)) {
+        /*
+         * Don't display a track-change train as the third train.
+         */
+        if (
+            result.length >= 2 &&
+            hasTrackChanged(nextTrain)
+        ) {
             break;
         }
 
+        /*
+         * Subsequent trains are only shown if they leave within
+         * 10 minutes of the preceding train.
+         *
+         * As requested, departure is ALWAYS used here.
+         */
         const diffMinutes =
             (getTrainTime(nextTrain) - getTrainTime(previousTrain)) / 60000;
 
@@ -684,14 +746,11 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
         result.push(nextTrain);
     }
 
-    /*
-     * Never return more than three trains.
-     */
-    result = result
-        .filter(Boolean)
-        .slice(0, 3);
-
-    return res.status(200).json(result);
+    return res.status(200).json(
+        result
+            .filter(Boolean)
+            .slice(0, 3)
+    );
 });
 
 // Fetch all locationNames
