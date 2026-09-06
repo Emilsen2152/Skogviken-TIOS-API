@@ -438,6 +438,18 @@ app.get('/locations/:stationCode/departures', (req, res) => {
     res.json(locationsDepartures[stationCode]);
 });
 
+app.get('/locations/:stationCode/train/:trainNumber', (req, res) => {
+    const { stationCode, trainNumber } = req.params;
+    const arrivals = locationsArrivals[stationCode] || [];
+    const departures = locationsDepartures[stationCode] || [];
+
+    // Find the train in either arrivals or departures (prefer departures if both exist)
+    const train = departures.find(train => String(train.trainNumber) === String(trainNumber)) ||
+                  arrivals.find(train => String(train.trainNumber) === String(trainNumber));
+    if (!train) return res.status(404).json({ error: 'Train not found at this station' });
+    res.json(train);
+});
+
 app.get('/locations/:stationCode/track/:trackNumber', (req, res) => {
     const { stationCode, trackNumber } = req.params;
     const arrivals = locationsArrivals[stationCode] || [];
