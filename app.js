@@ -753,6 +753,59 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
     );
 });
 
+function getNextTrainTo(validTrains, destination, trainsPerResult) {
+    const result = [];
+
+    for (const train of validTrains) {
+        for (const stop of train.fullRoute) {
+            if (stop.code === destination) {
+                result.push(train);
+            }
+
+            if (result.length >= trainsPerResult) {
+                break;
+            }
+        }
+        if (result.length >= trainsPerResult) {
+            break;
+        }
+    }
+    return result;
+}
+
+app.get('/locations/SK/mainScreen', checkApiKey, async (req, res) => {
+    try {
+        const allDepartures = locationsDepartures['SK'] || [];
+
+        const getTrainTime = (train) => new Date(train.departure);
+
+        const passengerTrains = allDepartures.filter(train => {
+            return train.stopType === 'Passenger';
+        });
+
+        const now = new Date();
+
+        const upcomingDepartures = passengerTrains.filter(train => {
+            return getTrainTime(train) > now;
+        });
+
+        const mainScreenInfo = {
+            upcomingDepartures: upcomingDepartures
+        }
+
+        mainScreenInfo.nextTrainTo = {
+            KLH: getNextTrainTo(upcomingDepartures, 'KLH', 2),
+            KKN: getNextTrainTo(upcomingDepartures, 'KKN', 2),
+            SIG: getNextTrainTo(upcomingDepartures, 'SIG', 2),
+            MAS: getNextTrainTo(upcomingDepartures, 'MAS', 2),
+        }
+
+        res.status(200).json(mainScreenInfo);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Fetch all locationNames
 app.get('/locations', (req, res) => {
     res.status(200).json(locationNames);
