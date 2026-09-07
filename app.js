@@ -653,11 +653,29 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
 
     const result = [primaryTrain];
 
+    const canDisplayFollowUpTrain = (train) => {
+        if (!train.isDeparture) {
+            return result.length === 1 && hasTrackChanged(primaryTrain);
+        }
+
+        return (
+            !hasTrackChanged(train) ||
+            (result.length === 1 && !hasTrackChanged(primaryTrain))
+        );
+    };
+
     /*
      * Add up to two additional trains.
      */
     while (result.length < 3) {
         const previousTrain = result[result.length - 1];
+
+        if (
+            result.length === 2 &&
+            result.some(train => hasTrackChanged(train))
+        ) {
+            break;
+        }
 
         /*
          * If the primary train has been moved away from this
@@ -675,22 +693,12 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
 
                 return (
                     !alreadyDisplayed &&
-                    String(train.track) === requestedTrack
+                    String(train.track) === requestedTrack &&
+                    canDisplayFollowUpTrain(train)
                 );
             });
 
             if (!nextTrainOnRequestedTrack) {
-                break;
-            }
-
-            /*
-             * Don't put another track-change train into the
-             * third position.
-             */
-            if (
-                result.length >= 2 &&
-                hasTrackChanged(nextTrainOnRequestedTrack)
-            ) {
                 break;
             }
 
@@ -708,25 +716,17 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
         const nextTrain = validTrains
             .slice(previousTrainIndex + 1)
             .find(train => {
-                return !result.some(displayedTrain => {
+                const alreadyDisplayed = result.some(displayedTrain => {
                     return (
                         String(displayedTrain.trainNumber) ===
                         String(train.trainNumber)
                     );
                 });
+
+                return !alreadyDisplayed && canDisplayFollowUpTrain(train);
             });
 
         if (!nextTrain) {
-            break;
-        }
-
-        /*
-         * Don't display a track-change train as the third train.
-         */
-        if (
-            result.length >= 2 &&
-            hasTrackChanged(nextTrain)
-        ) {
             break;
         }
 
