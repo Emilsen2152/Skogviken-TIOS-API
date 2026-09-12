@@ -853,7 +853,7 @@ app.patch('/servers/:jobId', checkApiKey, async (req, res) => {
     const { jobId } = req.params;
     const { activeRailwayWorkers } = req.body;
 
-    if (!activeRailwayWorkers) return res.status(400).json({ error: 'Missing activeRailwayWorkers' });
+    if (activeRailwayWorkers === undefined) return res.status(400).json({ error: 'Missing activeRailwayWorkers' });
 
     const updatedServer = await servers.findOneAndUpdate(
         { jobId },
