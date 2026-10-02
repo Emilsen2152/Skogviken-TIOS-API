@@ -8,9 +8,9 @@ console.log('Timers are running...');
 
 // Location definitions
 const LOCATION_CODES = {
-    RUS: 'Rustfjelbma',
-    BOF: 'Boftsa',
-    IST: 'Inso tømmer A/S sidespor',
+    // RUS: 'Rustfjelbma',
+    // BOF: 'Boftsa',
+    // IST: 'Inso tømmer A/S sidespor',
     MAS: 'Masjok',
     RSK: 'Ruskka A/S sidespor',
     SJM: 'Skogviken Jernbanemuseum',
