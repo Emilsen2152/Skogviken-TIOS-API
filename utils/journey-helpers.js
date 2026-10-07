@@ -1,6 +1,9 @@
 const { DateTime } = require('luxon');
 const trains = require('./train.js');
 
+const passengerArrivalStopTypes = ['passenger', 'passenger-A', 'passenger-X', 'passenger-AX'];
+const passengerDepartureStopTypes = ['passenger', 'passenger-X'];
+
 // ============================================================
 // Journey search configuration
 // ============================================================
@@ -30,7 +33,6 @@ let journeyCache = {
 };
 
 let journeyCachePromise = null;
-
 
 // ============================================================
 // Date parsing
@@ -80,13 +82,11 @@ function parseJourneyDateTime(value) {
     return null;
 }
 
-
 function formatJourneyTime(date) {
     return DateTime
         .fromJSDate(date, { zone: 'Europe/Oslo' })
         .toFormat('dd.MM.yyyy HH:mm');
 }
-
 
 // ============================================================
 // Helpers
@@ -108,15 +108,32 @@ function getStopTime(stop, type) {
         : date;
 }
 
-
-function isPassengerStop(stop) {
+function isPassengerJourneyStop(stop) {
     return (
         stop &&
-        (!stop.stopType || stop.stopType === 'Passenger') &&
+        (
+            passengerArrivalStopTypes.includes(stop.stopType) ||
+            passengerDepartureStopTypes.includes(stop.stopType)
+        ) &&
         !stop.cancelledAtStation
     );
 }
 
+function isPassengerArrivalStop(stop) {
+    return (
+        stop &&
+        passengerArrivalStopTypes.includes(stop.stopType) &&
+        !stop.cancelledAtStation
+    );
+}
+
+function isPassengerDepartureStop(stop) {
+    return (
+        stop &&
+        passengerDepartureStopTypes.includes(stop.stopType) &&
+        !stop.cancelledAtStation
+    );
+}
 
 function createJourneyService(train, stops) {
     return {
@@ -129,11 +146,10 @@ function createJourneyService(train, stops) {
     };
 }
 
-
 // ============================================================
 // Build timetable index
 // ============================================================
-//
+
 // Instead of generating:
 //
 //     every station -> every later station
@@ -173,7 +189,7 @@ async function buildJourneyIndex() {
         for (let index = 0; index < train.currentRoute.length; index++) {
             const stop = train.currentRoute[index];
 
-            if (!isPassengerStop(stop)) {
+            if (!isPassengerJourneyStop(stop)) {
                 continue;
             }
 
@@ -192,6 +208,7 @@ async function buildJourneyIndex() {
                 index,
                 code: stop.code,
                 name: stop.name || stop.code,
+                stopType: stop.stopType,
                 arrival,
                 departure
             });
@@ -205,6 +222,12 @@ async function buildJourneyIndex() {
 
         for (let i = 0; i < stops.length; i++) {
             const stop = stops[i];
+
+            // Only stops where passengers are allowed to board
+            // should be added to the boarding index.
+            if (!isPassengerDepartureStop(stop)) {
+                continue;
+            }
 
             if (!servicesByStation.has(stop.code)) {
                 servicesByStation.set(stop.code, []);
@@ -228,7 +251,6 @@ async function buildJourneyIndex() {
 
     return servicesByStation;
 }
-
 
 async function getJourneyIndex() {
     const now = Date.now();
@@ -260,7 +282,6 @@ async function getJourneyIndex() {
     return journeyCachePromise;
 }
 
-
 // ============================================================
 // Generate possible legs from one station
 // ============================================================
@@ -279,6 +300,11 @@ function getPossibleLegs(
         const service = entry.service;
         const boardIndex = entry.stopIndex;
         const boardStop = service.stops[boardIndex];
+
+        // You can only board at a passenger departure stop.
+        if (!isPassengerDepartureStop(boardStop)) {
+            continue;
+        }
 
         // A train cannot be used twice in the same journey.
         if (usedTrains.has(service.trainNumber)) {
@@ -308,6 +334,11 @@ function getPossibleLegs(
             destinationIndex++
         ) {
             const destinationStop = service.stops[destinationIndex];
+
+            // You can only leave the train at a passenger arrival stop.
+            if (!isPassengerArrivalStop(destinationStop)) {
+                continue;
+            }
 
             // We cannot reach a destination before we depart.
             if (destinationStop.arrival <= boardStop.departure) {
@@ -345,7 +376,6 @@ function getPossibleLegs(
 
     return legs;
 }
-
 
 // ============================================================
 // Journey search
@@ -466,7 +496,6 @@ function findJourneys(
     return journeys;
 }
 
-
 // ============================================================
 // Remove duplicate journeys
 // ============================================================
@@ -489,7 +518,6 @@ function deduplicateJourneys(journeys) {
     return [...unique.values()];
 }
 
-
 // ============================================================
 // Journey ranking
 // ============================================================
@@ -500,7 +528,6 @@ function getJourneyDuration(journey) {
 
     return arrival.getTime() - departure.getTime();
 }
-
 
 function sortJourneys(journeys) {
     return journeys.sort((a, b) => {
@@ -528,7 +555,6 @@ function sortJourneys(journeys) {
         return a.length - b.length;
     });
 }
-
 
 // ============================================================
 // Convert result to API format
@@ -558,5 +584,6 @@ module.exports = {
     deduplicateJourneys,
     sortJourneys,
     formatJourneyResult,
-    getJourneyDuration
+    getJourneyDuration,
+    findJourneys
 };

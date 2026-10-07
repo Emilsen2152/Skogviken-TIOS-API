@@ -22,6 +22,9 @@ app.use(cors());
 
 const PORT = process.env.PORT || 80;
 
+const passengerDepartureStopTypes = ['passenger', 'passenger-X']
+const passengerArrivalStopTypes = ['passenger', 'passenger-A', 'passenger-X', 'passenger-AX'];
+
 function convertDates(obj) {
     for (const key in obj) {
         const value = obj[key];
@@ -532,7 +535,10 @@ app.get('/locations/:stationCode/track/:trackNumber/screenInfo', (req, res) => {
      * toLowerCase() also makes this tolerant of older data.
      */
     const passengerTrains = combined.filter(train => {
-        return String(train.stopType).toLowerCase() === 'passenger';
+        // return String(train.stopType).toLowerCase() === 'passenger';
+
+        // If the stopType includes "passenger", consider it a passenger train.
+        return String(train.stopType).toLowerCase().includes('passenger');
     });
 
     /*
@@ -780,7 +786,8 @@ app.get('/locations/SK/mainScreen', checkApiKey, async (req, res) => {
         const getTrainTime = (train) => new Date(train.departure);
 
         const passengerTrains = allDepartures.filter(train => {
-            return train.stopType === 'Passenger';
+            // return train.stopType === 'passenger';
+            return passengerDepartureStopTypes.includes(train.stopType);
         });
 
         const now = new Date();
@@ -1106,7 +1113,7 @@ app.get('/exportMessages/:messageId', checkApiKey, (req, res) => {
     res.status(200).json({ message: exportMessages[messageId] });
 });
 
-const { deduplicateJourneys, sortJourneys, formatJourneyResult, getJourneyDuration } = require('./utils/journey-helpers');
+const { deduplicateJourneys, sortJourneys, formatJourneyResult, findJourneys } = require('./utils/journey-helpers');
 
 // ============================================================
 // GET /journey
