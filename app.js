@@ -276,7 +276,7 @@ app.get('/trains/:trainNumber/norwayTimeRoute', async (req, res) => {
 });
 
 // Fetch trains based on query
-app.get('/trains', checkApiKey, async (req, res) => {
+app.get('/trains', async (req, res) => {
     try {
         // Read query parameters from URL string or default to fetching all trains {}
         const query = (req.query && Object.keys(req.query).length > 0) ? req.query : {};
