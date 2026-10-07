@@ -11,7 +11,9 @@ const fidoTrainClaims = require('./utils/fido-trainClaims');
 const fidoGsmRNumbers = require('./utils/fido-gsm-rNumbers.js');
 const staffed = require('./utils/staffed.js');
 const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset, delayTrain } = require('./timers');
-const { checkApiKey, validateRoute, convertToUTC } = require('./utils/helpers');
+const { checkApiKey, requireMasterKey, hashToken, validateRoute, convertToUTC } = require('./utils/helpers');
+const ApiToken = require('./utils/apiToken');
+const crypto = require('crypto');
 const { CronJob } = require('cron');
 
 const exportMessages = {};
@@ -70,6 +72,109 @@ app.listen(PORT, '::', () => {
 // Health check endpoint
 app.get('/status', (req, res) => {
     res.status(200).json({ status: 'OK' });
+});
+
+// ---- Bearer token management (master KEY only) ----
+function validatePermissions(permissions) {
+    if (!Array.isArray(permissions) || !permissions.every((p) => typeof p === 'string' && (p === '*' || /^(\*|[\w.-]+):(\*|read|write)$/.test(p)))) {
+        return 'permissions must be an array of "*" or "<resource>:<read|write|*>" strings';
+    }
+    return true;
+}
+
+function publicToken(t) {
+    return {
+        id: t._id,
+        name: t.name,
+        tokenPrefix: t.tokenPrefix,
+        permissions: t.permissions,
+        expiresAt: t.expiresAt,
+        revoked: t.revoked,
+        createdAt: t.createdAt,
+        lastUsedAt: t.lastUsedAt
+    };
+}
+
+app.post('/tokens', requireMasterKey, async (req, res) => {
+    const { name, permissions, expiresAt } = req.body;
+    if (!name || permissions === undefined) return res.status(400).json({ error: 'Missing name or permissions' });
+    const valid = validatePermissions(permissions);
+    if (valid !== true) return res.status(400).json({ error: valid });
+
+    let expires = null;
+    if (expiresAt) {
+        expires = new Date(expiresAt);
+        if (isNaN(expires)) return res.status(400).json({ error: 'Invalid expiresAt' });
+    }
+
+    try {
+        const token = crypto.randomBytes(32).toString('hex');
+        const doc = await ApiToken.create({
+            name,
+            permissions,
+            expiresAt: expires,
+            tokenHash: hashToken(token),
+            tokenPrefix: token.slice(0, 6)
+        });
+        // The raw token is only returned here, once.
+        res.status(201).json({ ...publicToken(doc), token });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/tokens', requireMasterKey, async (req, res) => {
+    try {
+        res.json((await ApiToken.find()).map(publicToken));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/tokens/:id', requireMasterKey, async (req, res) => {
+    try {
+        const t = mongoose.isValidObjectId(req.params.id) && await ApiToken.findById(req.params.id);
+        if (!t) return res.status(404).json({ error: 'Token not found' });
+        res.json(publicToken(t));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.patch('/tokens/:id', requireMasterKey, async (req, res) => {
+    const { name, permissions, expiresAt, revoked } = req.body;
+    try {
+        const t = mongoose.isValidObjectId(req.params.id) && await ApiToken.findById(req.params.id);
+        if (!t) return res.status(404).json({ error: 'Token not found' });
+
+        if (name !== undefined) t.name = name;
+        if (permissions !== undefined) {
+            const valid = validatePermissions(permissions);
+            if (valid !== true) return res.status(400).json({ error: valid });
+            t.permissions = permissions;
+        }
+        if (expiresAt !== undefined) {
+            const d = expiresAt === null ? null : new Date(expiresAt);
+            if (d && isNaN(d)) return res.status(400).json({ error: 'Invalid expiresAt' });
+            t.expiresAt = d;
+        }
+        if (revoked !== undefined) t.revoked = !!revoked;
+
+        await t.save();
+        res.json(publicToken(t));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/tokens/:id', requireMasterKey, async (req, res) => {
+    try {
+        const t = mongoose.isValidObjectId(req.params.id) && await ApiToken.findByIdAndDelete(req.params.id);
+        if (!t) return res.status(404).json({ error: 'Token not found' });
+        res.json({ message: 'Token deleted' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // Get Norway's time with API key validation
