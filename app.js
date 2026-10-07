@@ -22,8 +22,8 @@ app.use(cors());
 
 const PORT = process.env.PORT || 80;
 
-const passengerDepartureStopTypes = ['passenger', 'passenger-X']
 const passengerArrivalStopTypes = ['passenger', 'passenger-A', 'passenger-X', 'passenger-AX'];
+const passengerDepartureStopTypes = ['passenger', 'passenger-P', 'passenger-X', 'passenger-XP'];
 
 function convertDates(obj) {
     for (const key in obj) {

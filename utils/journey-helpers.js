@@ -2,7 +2,7 @@ const { DateTime } = require('luxon');
 const trains = require('./train.js');
 
 const passengerArrivalStopTypes = ['passenger', 'passenger-A', 'passenger-X', 'passenger-AX'];
-const passengerDepartureStopTypes = ['passenger', 'passenger-X'];
+const passengerDepartureStopTypes = ['passenger', 'passenger-P', 'passenger-X', 'passenger-XP'];
 
 // ============================================================
 // Journey search configuration
