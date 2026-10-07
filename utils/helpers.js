@@ -132,4 +132,4 @@ function convertToUTC(route) {
     });
 }
 
-module.exports = { checkApiKey, requireMasterKey, hashToken, validateRoute, convertToUTC };
+module.exports = { checkApiKey, requireMasterKey, hasMasterKey, hashToken, validateRoute, convertToUTC };

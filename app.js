@@ -13,6 +13,7 @@ const staffed = require('./utils/staffed.js');
 const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset, delayTrain } = require('./timers');
 const { checkApiKey, requireMasterKey, hashToken, validateRoute, convertToUTC } = require('./utils/helpers');
 const ApiToken = require('./utils/apiToken');
+const { rateLimiter } = require('./utils/rateLimit');
 const crypto = require('crypto');
 const { CronJob } = require('cron');
 
@@ -21,6 +22,7 @@ const exportMessages = {};
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use(rateLimiter);
 
 const PORT = process.env.PORT || 80;
 
