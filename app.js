@@ -20,6 +20,8 @@ const { CronJob } = require('cron');
 const exportMessages = {};
 
 const app = express();
+// The application is deployed behind one reverse proxy, which supplies X-Forwarded-For.
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use(cors());
 app.use(rateLimiter);
