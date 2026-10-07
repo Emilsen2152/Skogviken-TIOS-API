@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { Schema } = require('mongoose');
 
 const apiTokenSchema = new Schema({
-    name: { type: String, required: true },
+    name: { type: String, required: true, unique: true, trim: true },
     tokenHash: { type: String, required: true, unique: true },
     tokenPrefix: { type: String, required: true },
     permissions: { type: [String], default: [] },

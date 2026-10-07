@@ -119,6 +119,7 @@ app.post('/tokens', requireMasterKey, async (req, res) => {
         // The raw token is only returned here, once.
         res.status(201).json({ ...publicToken(doc), token });
     } catch (error) {
+        if (error.code === 11000) return res.status(409).json({ error: 'Token name already exists' });
         res.status(500).json({ error: error.message });
     }
 });
@@ -163,6 +164,7 @@ app.patch('/tokens/:id', requireMasterKey, async (req, res) => {
         await t.save();
         res.json(publicToken(t));
     } catch (error) {
+        if (error.code === 11000) return res.status(409).json({ error: 'Token name already exists' });
         res.status(500).json({ error: error.message });
     }
 });
