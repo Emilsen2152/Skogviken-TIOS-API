@@ -3,7 +3,7 @@ const ApiToken = require('./apiToken');
 const { hasMasterKey, hashToken } = require('./helpers');
 
 const WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS) || 60 * 1000;
-const ANON_LIMIT = Number(process.env.RATE_LIMIT_ANON) || 20;
+const ANON_LIMIT = Number(process.env.RATE_LIMIT_ANON) || 60;
 const TOKEN_LIMIT = Number(process.env.RATE_LIMIT_TOKEN) || 200;
 
 const baseOptions = {
