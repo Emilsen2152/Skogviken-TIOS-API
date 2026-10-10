@@ -531,12 +531,24 @@ function filterJourneyAlternatives(journeys) {
         const duration = getJourneyDuration(journey);
         const alternatives = journeysByFinalTrain.get(finalTrain);
 
-        if (!alternatives || duration < alternatives.duration) {
+        const isBetter =
+            !alternatives ||
+            duration < alternatives.duration ||
+            (
+                duration === alternatives.duration &&
+                journey.length < alternatives.legCount
+            );
+
+        if (isBetter) {
             journeysByFinalTrain.set(finalTrain, {
                 duration,
+                legCount: journey.length,
                 journeys: [journey]
             });
-        } else if (duration === alternatives.duration) {
+        } else if (
+            duration === alternatives.duration &&
+            journey.length === alternatives.legCount
+        ) {
             alternatives.journeys.push(journey);
         }
     }
