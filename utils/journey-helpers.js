@@ -586,5 +586,6 @@ module.exports = {
     formatJourneyResult,
     getJourneyDuration,
     findJourneys,
-    parseJourneyDateTime
+    parseJourneyDateTime,
+    getJourneyIndex
 };
