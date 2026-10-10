@@ -108,17 +108,6 @@ function getStopTime(stop, type) {
         : date;
 }
 
-function isPassengerJourneyStop(stop) {
-    return (
-        stop &&
-        (
-            passengerArrivalStopTypes.includes(stop.stopType) ||
-            passengerDepartureStopTypes.includes(stop.stopType)
-        ) &&
-        !stop.cancelledAtStation
-    );
-}
-
 function isPassengerArrivalStop(stop) {
     return (
         stop &&
@@ -189,16 +178,21 @@ async function buildJourneyIndex() {
         for (let index = 0; index < train.currentRoute.length; index++) {
             const stop = train.currentRoute[index];
 
-            if (!isPassengerJourneyStop(stop)) {
+            if (!stop || stop.cancelledAtStation) {
                 continue;
             }
 
-            const arrival = getStopTime(stop, 'arrival');
-            const departure = getStopTime(stop, 'departure');
+            const canArrive = isPassengerArrivalStop(stop);
+            const canDepart = isPassengerDepartureStop(stop);
 
-            if (!arrival || !departure) {
-                continue;
-            }
+            const arrival = canArrive
+                ? getStopTime(stop, 'arrival')
+                : null;
+            const departure = canDepart
+                ? getStopTime(stop, 'departure')
+                : null;
+
+            if (!arrival && !departure) continue;
 
             if (!stop.code) {
                 continue;
@@ -225,7 +219,7 @@ async function buildJourneyIndex() {
 
             // Only stops where passengers are allowed to board
             // should be added to the boarding index.
-            if (!isPassengerDepartureStop(stop)) {
+            if (!isPassengerDepartureStop(stop) || !stop.departure) {
                 continue;
             }
 
@@ -302,7 +296,7 @@ function getPossibleLegs(
         const boardStop = service.stops[boardIndex];
 
         // You can only board at a passenger departure stop.
-        if (!isPassengerDepartureStop(boardStop)) {
+        if (!isPassengerDepartureStop(boardStop) || !boardStop.departure) {
             continue;
         }
 
@@ -336,7 +330,7 @@ function getPossibleLegs(
             const destinationStop = service.stops[destinationIndex];
 
             // You can only leave the train at a passenger arrival stop.
-            if (!isPassengerArrivalStop(destinationStop)) {
+            if (!isPassengerArrivalStop(destinationStop) || !destinationStop.arrival) {
                 continue;
             }
 
@@ -531,16 +525,14 @@ function getJourneyDuration(journey) {
 
 function sortJourneys(journeys) {
     return journeys.sort((a, b) => {
-        const durationDifference =
-            getJourneyDuration(a) -
-            getJourneyDuration(b);
+        const departureA = a[0].from.time.getTime();
+        const departureB = b[0].from.time.getTime();
 
-        if (durationDifference !== 0) {
-            return durationDifference;
+        if (departureA !== departureB) {
+            return departureA - departureB;
         }
 
-        // If total duration is identical, prefer the journey
-        // that arrives first.
+        // For journeys departing at the same time, prefer the earlier arrival.
         const arrivalA =
             a[a.length - 1].to.time.getTime();
 
@@ -551,7 +543,7 @@ function sortJourneys(journeys) {
             return arrivalA - arrivalB;
         }
 
-        // Finally prefer fewer changes.
+        // If departure and arrival are identical, prefer fewer changes.
         return a.length - b.length;
     });
 }
