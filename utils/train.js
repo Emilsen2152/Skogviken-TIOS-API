@@ -54,7 +54,8 @@ const messageSchema = new Schema({
 const trainSchema = new Schema({
     trainNumber: {
         type: String,
-        required: true
+        required: true,
+        unique: true
     },
     operator: {
         type: String,
