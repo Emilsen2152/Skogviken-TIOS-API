@@ -1343,7 +1343,7 @@ app.get('/entur/journey', checkApiKey, async (req, res) => {
         journeys = deduplicateJourneys(journeys);
 
         // ----------------------------------------------------
-        // Sort by earliest departure
+        // Sort by earliest arrival
         // ----------------------------------------------------
 
         sortJourneys(journeys);

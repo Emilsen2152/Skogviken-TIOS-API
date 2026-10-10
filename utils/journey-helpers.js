@@ -536,14 +536,6 @@ function getJourneyDuration(journey) {
 
 function sortJourneys(journeys) {
     return journeys.sort((a, b) => {
-        const departureA = a[0].from.time.getTime();
-        const departureB = b[0].from.time.getTime();
-
-        if (departureA !== departureB) {
-            return departureA - departureB;
-        }
-
-        // For journeys departing at the same time, prefer the earlier arrival.
         const arrivalA =
             a[a.length - 1].to.time.getTime();
 
@@ -552,6 +544,13 @@ function sortJourneys(journeys) {
 
         if (arrivalA !== arrivalB) {
             return arrivalA - arrivalB;
+        }
+
+        const departureA = a[0].from.time.getTime();
+        const departureB = b[0].from.time.getTime();
+
+        if (departureA !== departureB) {
+            return departureA - departureB;
         }
 
         // If departure and arrival are identical, prefer fewer changes.
