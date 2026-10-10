@@ -523,6 +523,28 @@ function deduplicateJourneys(journeys) {
     return [...unique.values()];
 }
 
+function filterJourneyAlternatives(journeys) {
+    const journeysByFinalTrain = new Map();
+
+    for (const journey of journeys) {
+        const finalTrain = journey[journey.length - 1].trainNumber;
+        const duration = getJourneyDuration(journey);
+        const alternatives = journeysByFinalTrain.get(finalTrain);
+
+        if (!alternatives || duration < alternatives.duration) {
+            journeysByFinalTrain.set(finalTrain, {
+                duration,
+                journeys: [journey]
+            });
+        } else if (duration === alternatives.duration) {
+            alternatives.journeys.push(journey);
+        }
+    }
+
+    return [...journeysByFinalTrain.values()]
+        .flatMap(alternatives => alternatives.journeys);
+}
+
 // ============================================================
 // Journey ranking
 // ============================================================
@@ -584,6 +606,7 @@ function formatJourneyResult(journey) {
 
 module.exports = {
     deduplicateJourneys,
+    filterJourneyAlternatives,
     sortJourneys,
     formatJourneyResult,
     getJourneyDuration,
