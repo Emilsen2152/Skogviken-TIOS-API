@@ -285,7 +285,8 @@ function getPossibleLegs(
     earliestDeparture,
     latestArrival,
     servicesByStation,
-    usedTrains
+    usedTrains,
+    visitedStations
 ) {
     const services = servicesByStation.get(stationCode) || [];
     const legs = [];
@@ -328,6 +329,12 @@ function getPossibleLegs(
             destinationIndex++
         ) {
             const destinationStop = service.stops[destinationIndex];
+
+            // Do not continue along a train after it passes a station
+            // this journey has already visited.
+            if (visitedStations.has(destinationStop.code)) {
+                break;
+            }
 
             // You can only leave the train at a passenger arrival stop.
             if (!isPassengerArrivalStop(destinationStop) || !destinationStop.arrival) {
@@ -444,7 +451,11 @@ function findJourneys(
             earliestDeparture,
             arriveBeforeDate,
             servicesByStation,
-            usedTrains
+            usedTrains,
+            new Set([
+                startStation,
+                ...path.map(leg => leg.to.code)
+            ])
         );
 
         for (const leg of legs) {
