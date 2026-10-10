@@ -1224,7 +1224,7 @@ app.get('/exportMessages/:messageId', checkApiKey, (req, res) => {
     res.status(200).json({ message: exportMessages[messageId] });
 });
 
-const { deduplicateJourneys, sortJourneys, formatJourneyResult, findJourneys, parseJourneyDateTime, getJourneyIndex } = require('./utils/journey-helpers');
+const { deduplicateJourneys, sortJourneys, formatJourneyResult, findJourneys, parseJourneyDateTime, getJourneyIndex, JOURNEY_CONFIG } = require('./utils/journey-helpers');
 
 // ============================================================
 // GET /journey
