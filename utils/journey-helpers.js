@@ -555,10 +555,24 @@ function keepEarliestTransferPoints(journeys) {
     return [...bySequence.values()];
 }
 
+// A journey is pointless if the same first train, boarded at the same
+// station, already reaches the destination with fewer changes and no later.
+function removeDominatedJourneys(journeys) {
+    return journeys.filter(journey =>
+        !journeys.some(other =>
+            other.length < journey.length &&
+            other[0].trainNumber === journey[0].trainNumber &&
+            other[0].from.code === journey[0].from.code &&
+            other[other.length - 1].to.time.getTime() <=
+                journey[journey.length - 1].to.time.getTime()
+        )
+    );
+}
+
 function filterJourneyAlternatives(journeys) {
     const journeysByFinalTrain = new Map();
 
-    for (const journey of keepEarliestTransferPoints(journeys)) {
+    for (const journey of removeDominatedJourneys(keepEarliestTransferPoints(journeys))) {
         const finalTrain = journey[journey.length - 1].trainNumber;
         const duration = getJourneyDuration(journey);
         const alternatives = journeysByFinalTrain.get(finalTrain);
