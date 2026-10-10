@@ -523,10 +523,42 @@ function deduplicateJourneys(journeys) {
     return [...unique.values()];
 }
 
+// Journeys using the same trains in the same order only differ in where
+// the change happens. Keep the one that changes at the earliest point.
+function keepEarliestTransferPoints(journeys) {
+    const bySequence = new Map();
+
+    for (const journey of journeys) {
+        const key = journey.map(leg => leg.trainNumber).join('>');
+        const existing = bySequence.get(key);
+
+        if (!existing) {
+            bySequence.set(key, journey);
+            continue;
+        }
+
+        for (let i = 0; i < journey.length - 1; i++) {
+            const difference =
+                journey[i].to.time.getTime() -
+                existing[i].to.time.getTime();
+
+            if (difference < 0) {
+                bySequence.set(key, journey);
+            }
+
+            if (difference !== 0) {
+                break;
+            }
+        }
+    }
+
+    return [...bySequence.values()];
+}
+
 function filterJourneyAlternatives(journeys) {
     const journeysByFinalTrain = new Map();
 
-    for (const journey of journeys) {
+    for (const journey of keepEarliestTransferPoints(journeys)) {
         const finalTrain = journey[journey.length - 1].trainNumber;
         const duration = getJourneyDuration(journey);
         const alternatives = journeysByFinalTrain.get(finalTrain);
