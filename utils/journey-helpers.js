@@ -310,36 +310,206 @@ async function buildJourneyIndex() {
 
         const service = createJourneyService(train, stops);
 
-        for (let i = 0; i < stops.length; i++) {
-            const stop = stops[i];
-
-            // Only stops where passengers are allowed to board
-            // should be added to the boarding index.
-            if (!isPassengerDepartureStop(stop) || !stop.departure) {
-                continue;
-            }
-
-            if (!servicesByStation.has(stop.code)) {
-                servicesByStation.set(stop.code, []);
-            }
-
-            servicesByStation.get(stop.code).push({
-                service,
-                stopIndex: i
-            });
-        }
+        addServiceToIndex(servicesByStation, service);
     }
 
-    // Sorting here means the search can stop looking once services
-    // are clearly too late for the requested departure time.
+    sortIndex(servicesByStation);
+
+    return servicesByStation;
+}
+
+// Index a service by every stop where passengers may board.
+function addServiceToIndex(servicesByStation, service) {
+    for (let i = 0; i < service.stops.length; i++) {
+        const stop = service.stops[i];
+
+        if (!isPassengerDepartureStop(stop) || !stop.departure) {
+            continue;
+        }
+
+        if (!servicesByStation.has(stop.code)) {
+            servicesByStation.set(stop.code, []);
+        }
+
+        servicesByStation.get(stop.code).push({
+            service,
+            stopIndex: i
+        });
+    }
+}
+
+// Sorting here means the search can stop looking once services
+// are clearly too late for the requested departure time.
+function sortIndex(servicesByStation) {
     for (const services of servicesByStation.values()) {
         services.sort((a, b) =>
             a.service.stops[a.stopIndex].departure -
             b.service.stops[b.stopIndex].departure
         );
     }
+}
+
+// ============================================================
+// Approximate index for days other than today
+// ============================================================
+
+// Live data (currentRoute) only exists for today. For any other day the
+// planned timetable (defaultRoute) is projected onto that day instead.
+
+function getOsloDay(date) {
+    return DateTime.fromJSDate(date, { zone: 'Europe/Oslo' }).startOf('day');
+}
+
+function getJourneyDays(referenceDate) {
+    const windowMs = JOURNEY_CONFIG.SEARCH_WINDOW_HOURS * 3_600_000;
+    const first = getOsloDay(new Date(referenceDate.getTime() - windowMs));
+    const last = getOsloDay(new Date(referenceDate.getTime() + windowMs));
+    const days = [];
+
+    for (let day = first; day <= last; day = day.plus({ days: 1 })) {
+        days.push(day);
+    }
+
+    return days;
+}
+
+function isToday(date) {
+    return getOsloDay(date).toMillis() === getOsloDay(new Date()).toMillis();
+}
+
+function buildDefaultServices(train, day) {
+    const stops = [];
+    let previous = 0;
+
+    // Trains running past midnight have times that wrap around, so each time
+    // that is earlier than the one before it moves to the following day.
+    const place = time => {
+        if (
+            !time ||
+            typeof time.hours !== 'number' ||
+            typeof time.minutes !== 'number'
+        ) {
+            return null;
+        }
+
+        let result = day.set({ hour: time.hours, minute: time.minutes });
+
+        while (result.toMillis() < previous) {
+            result = result.plus({ days: 1 });
+        }
+
+        previous = result.toMillis();
+
+        return result.toJSDate();
+    };
+
+    train.defaultRoute.forEach((stop, index) => {
+        const plannedArrival = place(stop.arrival);
+        const plannedDeparture = place(stop.departure);
+
+        if (!stop.code) {
+            return;
+        }
+
+        const arrival = isPassengerArrivalStop(stop) ? plannedArrival : null;
+        const departure = isPassengerDepartureStop(stop) ? plannedDeparture : null;
+
+        if (!arrival && !departure) {
+            return;
+        }
+
+        stops.push({
+            index,
+            code: stop.code,
+            name: stop.name || stop.code,
+            stopType: stop.stopType,
+            arrival,
+            departure,
+            plannedArrival: arrival,
+            plannedDeparture: departure,
+            arrivalCancelled: false,
+            departureCancelled: false
+        });
+    });
+
+    if (stops.length < 2) {
+        return null;
+    }
+
+    return {
+        ...createJourneyService(train, stops),
+        estimated: true
+    };
+}
+
+async function buildDefaultJourneyIndex(days) {
+    const allTrains = await trains
+        .find(
+            { extraTrain: { $ne: true } },
+            {
+                trainNumber: 1,
+                operator: 1,
+                routeNumber: 1,
+                defaultRoute: 1
+            }
+        )
+        .lean()
+        .exec();
+
+    const servicesByStation = new Map();
+
+    for (const train of allTrains) {
+        if (!train.defaultRoute?.length) {
+            continue;
+        }
+
+        for (const day of days) {
+            const service = buildDefaultServices(train, day);
+
+            if (service) {
+                addServiceToIndex(servicesByStation, service);
+            }
+        }
+    }
+
+    sortIndex(servicesByStation);
 
     return servicesByStation;
+}
+
+const defaultIndexCache = new Map();
+
+function getDefaultJourneyIndex(referenceDate) {
+    const days = getJourneyDays(referenceDate);
+    const key = days.map(day => day.toISODate()).join(',');
+    const cached = defaultIndexCache.get(key);
+
+    if (cached && cached.expiresAt > Date.now()) {
+        return cached.promise;
+    }
+
+    if (defaultIndexCache.size >= 20) {
+        defaultIndexCache.clear();
+    }
+
+    const promise = buildDefaultJourneyIndex(days).catch(error => {
+        defaultIndexCache.delete(key);
+        throw error;
+    });
+
+    defaultIndexCache.set(key, {
+        expiresAt: Date.now() + JOURNEY_CONFIG.CACHE_TTL_MS,
+        promise
+    });
+
+    return promise;
+}
+
+// Live data for today, an approximation from the default routes otherwise.
+async function getJourneyIndexForDate(referenceDate) {
+    return isToday(referenceDate)
+        ? getJourneyIndex()
+        : getDefaultJourneyIndex(referenceDate);
 }
 
 async function getJourneyIndex() {
@@ -471,6 +641,7 @@ function getPossibleLegs(
                 trainNumber: service.trainNumber,
                 operator: service.operator,
                 routeNumber: service.routeNumber,
+                estimated: Boolean(service.estimated),
 
                 from: {
                     code: boardStop.code,
@@ -799,6 +970,7 @@ function formatJourneyResult(journey) {
         operator: leg.operator,
         routeNumber: leg.routeNumber,
         cancelled: leg.cancelled,
+        estimated: leg.estimated,
         from: formatStop(leg.from),
         to: formatStop(leg.to)
     }));
@@ -813,6 +985,7 @@ module.exports = {
     findJourneys,
     parseJourneyDateTime,
     getJourneyIndex,
+    getJourneyIndexForDate,
     sortTrainsByScheduledDeparture,
     JOURNEY_CONFIG
 };

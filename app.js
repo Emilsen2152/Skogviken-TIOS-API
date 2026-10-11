@@ -1225,7 +1225,7 @@ app.get('/exportMessages/:messageId', checkApiKey, (req, res) => {
     res.status(200).json({ message: exportMessages[messageId] });
 });
 
-const { deduplicateJourneys, filterJourneyAlternatives, sortJourneys, formatJourneyResult, findJourneys, parseJourneyDateTime, getJourneyIndex, JOURNEY_CONFIG } = require('./utils/journey-helpers');
+const { deduplicateJourneys, filterJourneyAlternatives, sortJourneys, formatJourneyResult, findJourneys, parseJourneyDateTime, getJourneyIndexForDate, JOURNEY_CONFIG } = require('./utils/journey-helpers');
 
 // ============================================================
 // GET /journey
@@ -1317,8 +1317,9 @@ app.get('/entur/journey', checkApiKey, async (req, res) => {
         // Get cached timetable index
         // ----------------------------------------------------
 
+        // Live data for today; planned timetable for any other day.
         const servicesByStation =
-            await getJourneyIndex();
+            await getJourneyIndexForDate(departureAfterDate || arriveBeforeDate);
 
         // ----------------------------------------------------
         // Quickly reject impossible starting stations
