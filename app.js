@@ -913,10 +913,12 @@ app.get('/locations/SK/mainScreen', checkApiKey, async (req, res) => {
         }
 
         mainScreenInfo.nextTrainTo = {
-            KLH: getNextTrainTo(upcomingDepartures, 'KLH', 2),
+            /*KLH: getNextTrainTo(upcomingDepartures, 'KLH', 2),
             KKN: getNextTrainTo(upcomingDepartures, 'KKN', 2),
             SIG: getNextTrainTo(upcomingDepartures, 'SIG', 2),
-            MAS: getNextTrainTo(upcomingDepartures, 'MAS', 2),
+            MAS: getNextTrainTo(upcomingDepartures, 'MAS', 2),*/
+            KLH: getNextTrainTo(upcomingDepartures, 'KLH', 4),
+            MAS: getNextTrainTo(upcomingDepartures, 'MAS', 4)
         }
 
         res.status(200).json(mainScreenInfo);
