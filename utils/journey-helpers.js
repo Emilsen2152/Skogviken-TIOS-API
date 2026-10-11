@@ -129,6 +129,44 @@ function isPassengerDepartureStop(stop) {
     );
 }
 
+function getScheduledDeparture(train) {
+    if (train?.scheduledDeparture) {
+        return getStopTime(train, 'scheduledDeparture')?.getTime() ?? null;
+    }
+
+    const currentRoute = train?.currentRoute || [];
+    const departureIndex = currentRoute.findIndex(stop => stop?.departure);
+
+    if (departureIndex === -1) {
+        return null;
+    }
+
+    const currentStop = currentRoute[departureIndex];
+    const scheduledStop = train.defaultRoute?.[departureIndex]?.code === currentStop.code
+        ? train.defaultRoute[departureIndex]
+        : train.defaultRoute?.find(stop => stop.code === currentStop.code);
+    const scheduledDeparture = getPlannedTime(
+        scheduledStop?.departure,
+        currentStop.departure
+    );
+
+    return scheduledDeparture && !Number.isNaN(scheduledDeparture.getTime())
+        ? scheduledDeparture.getTime()
+        : null;
+}
+
+function sortTrainsByScheduledDeparture(trainList) {
+    return [...trainList].sort((a, b) => {
+        const departureA = getScheduledDeparture(a);
+        const departureB = getScheduledDeparture(b);
+
+        if (departureA === null) return departureB === null ? 0 : 1;
+        if (departureB === null) return -1;
+
+        return departureA - departureB;
+    });
+}
+
 // Planned times are stored as { hours, minutes } in Norwegian local time.
 // Place them on the same day as the real time so the two can be compared.
 function getPlannedTime(planned, actual) {
@@ -779,5 +817,6 @@ module.exports = {
     findJourneys,
     parseJourneyDateTime,
     getJourneyIndex,
+    sortTrainsByScheduledDeparture,
     JOURNEY_CONFIG
 };

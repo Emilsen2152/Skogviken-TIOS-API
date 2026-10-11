@@ -12,6 +12,7 @@ const fidoGsmRNumbers = require('./utils/fido-gsm-rNumbers.js');
 const staffed = require('./utils/staffed.js');
 const { dayTimer, locationUpdateTimer, locationsArrivals, locationsDepartures, locationNames, updateLocations, dayReset, delayTrain } = require('./timers');
 const { checkApiKey, requireMasterKey, hashToken, validateRoute, convertToUTC } = require('./utils/helpers');
+const { sortTrainsByScheduledDeparture } = require('./utils/journey-helpers');
 const ApiToken = require('./utils/apiToken');
 const { rateLimiter } = require('./utils/rateLimit');
 const crypto = require('crypto');
@@ -290,7 +291,7 @@ app.get('/trains', async (req, res) => {
         const trainsList = await trains.find(query).exec();
 
         // Return empty list if no trains match
-        res.json(trainsList || []);
+        res.json(sortTrainsByScheduledDeparture(trainsList || []));
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -1439,7 +1440,7 @@ app.get('/fido/trainsWithClaims', checkApiKey, async (req, res) => {
             };
         });
 
-        res.status(200).json(trainsWithClaims);
+        res.status(200).json(sortTrainsByScheduledDeparture(trainsWithClaims));
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
