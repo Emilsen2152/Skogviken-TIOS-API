@@ -10,7 +10,7 @@ const passengerDepartureStopTypes = ['passenger', 'passenger-P', 'passenger-X', 
 
 const JOURNEY_CONFIG = {
     MAX_LEGS: 3,
-    MAX_RESULTS: 5,
+    MAX_RESULTS: 10,
 
     // Minimum time required to transfer between trains.
     MIN_TRANSFER_MINUTES: 1,
