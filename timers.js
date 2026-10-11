@@ -414,7 +414,6 @@ async function updateLocations() {
                 norwegianDefaultArrival: { hours: defaultArrival.hour, minutes: defaultArrival.minute },
                 arrivalDelay,
                 departure: location.departure,
-                scheduledDeparture: defaultDeparture.toJSDate(),
                 defaultDeparture: defaultDeparture.toJSDate(),
                 norwegianDeparture: { hours: norwegianDeparture.hour, minutes: norwegianDeparture.minute },
                 norwegianDefaultDeparture: { hours: defaultDeparture.hour, minutes: defaultDeparture.minute },
@@ -437,11 +436,11 @@ async function updateLocations() {
     await Promise.all(modifiedTrains.map(train => train.save()));
 
     for (const [code, arrivals] of Object.entries(newLocationsArrivals)) {
-        newLocationsArrivals[code] = Object.values(arrivals).sort((a, b) => a.scheduledDeparture - b.scheduledDeparture);
+        newLocationsArrivals[code] = Object.values(arrivals).sort((a, b) => a.defaultDeparture - b.defaultDeparture);
     }
 
     for (const [code, departures] of Object.entries(newLocationsDepartures)) {
-        newLocationsDepartures[code] = Object.values(departures).sort((a, b) => a.scheduledDeparture - b.scheduledDeparture);
+        newLocationsDepartures[code] = Object.values(departures).sort((a, b) => a.defaultDeparture - b.defaultDeparture);
     }
 
     Object.keys(locationsArrivals).forEach(key => delete locationsArrivals[key]);

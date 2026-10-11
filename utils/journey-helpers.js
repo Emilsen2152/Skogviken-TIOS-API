@@ -130,10 +130,6 @@ function isPassengerDepartureStop(stop) {
 }
 
 function getScheduledDeparture(train) {
-    if (train?.scheduledDeparture) {
-        return getStopTime(train, 'scheduledDeparture')?.getTime() ?? null;
-    }
-
     const currentRoute = train?.currentRoute || [];
     const departureIndex = currentRoute.findIndex(stop => stop?.departure);
 
