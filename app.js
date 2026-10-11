@@ -1344,10 +1344,10 @@ app.get('/entur/journey', checkApiKey, async (req, res) => {
         journeys = filterJourneyAlternatives(journeys);
 
         // ----------------------------------------------------
-        // Sort by earliest arrival
+        // Sort by earliest arrival (departureAfter) or latest departure (arriveBefore)
         // ----------------------------------------------------
 
-        sortJourneys(journeys);
+        sortJourneys(journeys, { arriveBefore: Boolean(arriveBeforeDate) });
 
         // ----------------------------------------------------
         // Return only the requested number of results

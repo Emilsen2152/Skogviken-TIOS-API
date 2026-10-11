@@ -15,6 +15,13 @@ const JOURNEY_CONFIG = {
     // Minimum time required to transfer between trains.
     MIN_TRANSFER_MINUTES: 1,
 
+    // Longest acceptable wait when changing trains.
+    MAX_TRANSFER_WAIT_MINUTES: 120,
+
+    // How far from the requested time the search looks: after
+    // departureAfter, or before arriveBefore.
+    SEARCH_WINDOW_HOURS: 12,
+
     // How long the timetable index is kept in memory.
     // Keep this fairly short because train data can change.
     CACHE_TTL_MS: 60_000,
@@ -178,12 +185,24 @@ async function buildJourneyIndex() {
         for (let index = 0; index < train.currentRoute.length; index++) {
             const stop = train.currentRoute[index];
 
-            if (!stop || stop.cancelledAtStation) {
+            if (!stop) {
                 continue;
             }
 
-            const canArrive = isPassengerArrivalStop(stop);
-            const canDepart = isPassengerDepartureStop(stop);
+            // Arrival is cancelled if this stop or the previous stop is
+            // cancelled; departure if this stop or the next stop is.
+            const route = train.currentRoute;
+            const arrivalCancelled =
+                stop.cancelledAtStation ||
+                route[index - 1]?.cancelledAtStation;
+            const departureCancelled =
+                stop.cancelledAtStation ||
+                route[index + 1]?.cancelledAtStation;
+
+            const canArrive =
+                !arrivalCancelled && isPassengerArrivalStop(stop);
+            const canDepart =
+                !departureCancelled && isPassengerDepartureStop(stop);
 
             const arrival = canArrive
                 ? getStopTime(stop, 'arrival')
@@ -283,6 +302,7 @@ async function getJourneyIndex() {
 function getPossibleLegs(
     stationCode,
     earliestDeparture,
+    latestDeparture,
     latestArrival,
     servicesByStation,
     usedTrains,
@@ -291,7 +311,24 @@ function getPossibleLegs(
     const services = servicesByStation.get(stationCode) || [];
     const legs = [];
 
-    for (const entry of services) {
+    // The list is sorted by departure time, so jump straight to the
+    // first service that can still be boarded.
+    let low = 0;
+    let high = services.length;
+
+    while (low < high) {
+        const mid = (low + high) >> 1;
+        const entry = services[mid];
+
+        if (entry.service.stops[entry.stopIndex].departure < earliestDeparture) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+
+    for (let i = low; i < services.length; i++) {
+        const entry = services[i];
         const service = entry.service;
         const boardIndex = entry.stopIndex;
         const boardStop = service.stops[boardIndex];
@@ -306,20 +343,8 @@ function getPossibleLegs(
             continue;
         }
 
-        // The train must be boardable after the earliest allowed time.
-        if (boardStop.departure < earliestDeparture) {
-            continue;
-        }
-
-        // Because the list is sorted by departure time, everything
-        // after this point is also too late.
-        //
-        // This only matters when there is an upper bound on arrival,
-        // but is still useful for limiting the search.
-        if (
-            latestArrival &&
-            boardStop.departure > latestArrival
-        ) {
+        // Sorted by departure, so everything after this is too late too.
+        if (boardStop.departure > latestDeparture) {
             break;
         }
 
@@ -390,6 +415,7 @@ function findJourneys(
     servicesByStation
 ) {
     const journeys = [];
+    const windowMs = JOURNEY_CONFIG.SEARCH_WINDOW_HOURS * 3_600_000;
 
     let statesExplored = 0;
 
@@ -407,6 +433,12 @@ function findJourneys(
         statesExplored++;
 
         if (statesExplored > JOURNEY_CONFIG.MAX_SEARCH_STATES) {
+            if (statesExplored === JOURNEY_CONFIG.MAX_SEARCH_STATES + 1) {
+                console.warn(
+                    `Journey search ${startStation} -> ${endStation} hit the state limit; results may be incomplete.`
+                );
+            }
+
             return;
         }
 
@@ -428,9 +460,16 @@ function findJourneys(
         // --------------------------------------------------------
 
         let earliestDeparture;
+        let latestDeparture;
 
         if (path.length === 0) {
-            earliestDeparture = departureAfterDate || new Date(0);
+            if (arriveBeforeDate) {
+                earliestDeparture = new Date(arriveBeforeDate.getTime() - windowMs);
+                latestDeparture = arriveBeforeDate;
+            } else {
+                earliestDeparture = departureAfterDate;
+                latestDeparture = new Date(departureAfterDate.getTime() + windowMs);
+            }
         } else {
             const previousArrival =
                 path[path.length - 1].to.time;
@@ -439,6 +478,15 @@ function findJourneys(
                 previousArrival.getTime() +
                 JOURNEY_CONFIG.MIN_TRANSFER_MINUTES * 60_000
             );
+
+            latestDeparture = new Date(
+                previousArrival.getTime() +
+                JOURNEY_CONFIG.MAX_TRANSFER_WAIT_MINUTES * 60_000
+            );
+
+            if (arriveBeforeDate && latestDeparture > arriveBeforeDate) {
+                latestDeparture = arriveBeforeDate;
+            }
         }
 
         // --------------------------------------------------------
@@ -449,6 +497,7 @@ function findJourneys(
         const legs = getPossibleLegs(
             currentCode,
             earliestDeparture,
+            latestDeparture,
             arriveBeforeDate,
             servicesByStation,
             usedTrains,
@@ -555,52 +604,35 @@ function keepEarliestTransferPoints(journeys) {
     return [...bySequence.values()];
 }
 
-// A journey is pointless if the same first train, boarded at the same
-// station, already reaches the destination with fewer changes and no later.
-function removeDominatedJourneys(journeys) {
-    return journeys.filter(journey =>
-        !journeys.some(other =>
-            other.length < journey.length &&
-            other[0].trainNumber === journey[0].trainNumber &&
-            other[0].from.code === journey[0].from.code &&
-            other[other.length - 1].to.time.getTime() <=
-                journey[journey.length - 1].to.time.getTime()
-        )
+// Journey `other` dominates `journey` if it leaves no earlier, arrives no
+// later and has no more legs, and is strictly better in at least one of them.
+function dominates(other, journey) {
+    const otherDeparture = other[0].from.time.getTime();
+    const otherArrival = other[other.length - 1].to.time.getTime();
+    const departure = journey[0].from.time.getTime();
+    const arrival = journey[journey.length - 1].to.time.getTime();
+
+    if (
+        otherDeparture < departure ||
+        otherArrival > arrival ||
+        other.length > journey.length
+    ) {
+        return false;
+    }
+
+    return (
+        otherDeparture > departure ||
+        otherArrival < arrival ||
+        other.length < journey.length
     );
 }
 
 function filterJourneyAlternatives(journeys) {
-    const journeysByFinalTrain = new Map();
+    const candidates = keepEarliestTransferPoints(journeys);
 
-    for (const journey of removeDominatedJourneys(keepEarliestTransferPoints(journeys))) {
-        const finalTrain = journey[journey.length - 1].trainNumber;
-        const duration = getJourneyDuration(journey);
-        const alternatives = journeysByFinalTrain.get(finalTrain);
-
-        const isBetter =
-            !alternatives ||
-            duration < alternatives.duration ||
-            (
-                duration === alternatives.duration &&
-                journey.length < alternatives.legCount
-            );
-
-        if (isBetter) {
-            journeysByFinalTrain.set(finalTrain, {
-                duration,
-                legCount: journey.length,
-                journeys: [journey]
-            });
-        } else if (
-            duration === alternatives.duration &&
-            journey.length === alternatives.legCount
-        ) {
-            alternatives.journeys.push(journey);
-        }
-    }
-
-    return [...journeysByFinalTrain.values()]
-        .flatMap(alternatives => alternatives.journeys);
+    return candidates.filter(journey =>
+        !candidates.some(other => dominates(other, journey))
+    );
 }
 
 // ============================================================
@@ -614,26 +646,26 @@ function getJourneyDuration(journey) {
     return arrival.getTime() - departure.getTime();
 }
 
-function sortJourneys(journeys) {
+// departureAfter: earliest arrival first, then the latest departure
+// (least waiting). arriveBefore: latest departure first (leave as late as
+// possible), then the earliest arrival. Fewer legs breaks any remaining tie.
+function sortJourneys(journeys, { arriveBefore = false } = {}) {
     return journeys.sort((a, b) => {
-        const arrivalA =
-            a[a.length - 1].to.time.getTime();
-
-        const arrivalB =
-            b[b.length - 1].to.time.getTime();
-
-        if (arrivalA !== arrivalB) {
-            return arrivalA - arrivalB;
-        }
-
         const departureA = a[0].from.time.getTime();
         const departureB = b[0].from.time.getTime();
+        const arrivalA = a[a.length - 1].to.time.getTime();
+        const arrivalB = b[b.length - 1].to.time.getTime();
 
-        if (departureA !== departureB) {
-            return departureA - departureB;
-        }
+        const byDeparture = departureB - departureA;
+        const byArrival = arrivalA - arrivalB;
 
-        // If departure and arrival are identical, prefer fewer changes.
+        const [first, second] = arriveBefore
+            ? [byDeparture, byArrival]
+            : [byArrival, byDeparture];
+
+        if (first !== 0) return first;
+        if (second !== 0) return second;
+
         return a.length - b.length;
     });
 }
