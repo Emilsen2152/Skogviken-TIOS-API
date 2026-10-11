@@ -116,19 +116,60 @@ function getStopTime(stop, type) {
 }
 
 function isPassengerArrivalStop(stop) {
-    return (
+    return Boolean(
         stop &&
-        passengerArrivalStopTypes.includes(stop.stopType) &&
-        !stop.cancelledAtStation
+        passengerArrivalStopTypes.includes(stop.stopType)
     );
 }
 
 function isPassengerDepartureStop(stop) {
-    return (
+    return Boolean(
         stop &&
-        passengerDepartureStopTypes.includes(stop.stopType) &&
-        !stop.cancelledAtStation
+        passengerDepartureStopTypes.includes(stop.stopType)
     );
+}
+
+// Planned times are stored as { hours, minutes } in Norwegian local time.
+// Place them on the same day as the real time so the two can be compared.
+function getPlannedTime(planned, actual) {
+    if (
+        !planned ||
+        typeof planned.hours !== 'number' ||
+        typeof planned.minutes !== 'number'
+    ) {
+        return null;
+    }
+
+    const base = actual
+        ? DateTime.fromJSDate(actual, { zone: 'Europe/Oslo' })
+        : DateTime.now().setZone('Europe/Oslo');
+
+    let result = base.set({
+        hour: planned.hours,
+        minute: planned.minutes,
+        second: 0,
+        millisecond: 0
+    });
+
+    if (actual) {
+        const difference = result.toMillis() - base.toMillis();
+
+        if (difference > 12 * 3_600_000) {
+            result = result.minus({ days: 1 });
+        } else if (difference < -12 * 3_600_000) {
+            result = result.plus({ days: 1 });
+        }
+    }
+
+    return result.toJSDate();
+}
+
+function findDefaultStop(train, index, code) {
+    const route = train.defaultRoute || [];
+
+    return route[index]?.code === code
+        ? route[index]
+        : route.find(stop => stop.code === code);
 }
 
 function createJourneyService(train, stops) {
@@ -167,7 +208,8 @@ async function buildJourneyIndex() {
                 trainNumber: 1,
                 operator: 1,
                 routeNumber: 1,
-                currentRoute: 1
+                currentRoute: 1,
+                defaultRoute: 1
             }
         )
         .lean()
@@ -199,15 +241,10 @@ async function buildJourneyIndex() {
                 stop.cancelledAtStation ||
                 route[index + 1]?.cancelledAtStation;
 
-            const canArrive =
-                !arrivalCancelled && isPassengerArrivalStop(stop);
-            const canDepart =
-                !departureCancelled && isPassengerDepartureStop(stop);
-
-            const arrival = canArrive
+            const arrival = isPassengerArrivalStop(stop)
                 ? getStopTime(stop, 'arrival')
                 : null;
-            const departure = canDepart
+            const departure = isPassengerDepartureStop(stop)
                 ? getStopTime(stop, 'departure')
                 : null;
 
@@ -217,13 +254,19 @@ async function buildJourneyIndex() {
                 continue;
             }
 
+            const defaultStop = findDefaultStop(train, index, stop.code);
+
             stops.push({
                 index,
                 code: stop.code,
                 name: stop.name || stop.code,
                 stopType: stop.stopType,
                 arrival,
-                departure
+                departure,
+                plannedArrival: getPlannedTime(defaultStop?.arrival, arrival),
+                plannedDeparture: getPlannedTime(defaultStop?.departure, departure),
+                arrivalCancelled: Boolean(arrivalCancelled),
+                departureCancelled: Boolean(departureCancelled)
             });
         }
 
@@ -306,7 +349,8 @@ function getPossibleLegs(
     latestArrival,
     servicesByStation,
     usedTrains,
-    visitedStations
+    visitedStations,
+    includeCancelled
 ) {
     const services = servicesByStation.get(stationCode) || [];
     const legs = [];
@@ -338,6 +382,11 @@ function getPossibleLegs(
             continue;
         }
 
+        // Cancelled departures are only offered when explicitly requested.
+        if (boardStop.departureCancelled && !includeCancelled) {
+            continue;
+        }
+
         // A train cannot be used twice in the same journey.
         if (usedTrains.has(service.trainNumber)) {
             continue;
@@ -366,6 +415,10 @@ function getPossibleLegs(
                 continue;
             }
 
+            if (destinationStop.arrivalCancelled && !includeCancelled) {
+                continue;
+            }
+
             // We cannot reach a destination before we depart.
             if (destinationStop.arrival <= boardStop.departure) {
                 continue;
@@ -388,14 +441,21 @@ function getPossibleLegs(
                 from: {
                     code: boardStop.code,
                     name: boardStop.name,
-                    time: boardStop.departure
+                    time: boardStop.departure,
+                    plannedTime: boardStop.plannedDeparture
                 },
 
                 to: {
                     code: destinationStop.code,
                     name: destinationStop.name,
-                    time: destinationStop.arrival
-                }
+                    time: destinationStop.arrival,
+                    plannedTime: destinationStop.plannedArrival
+                },
+
+                cancelled: Boolean(
+                    boardStop.departureCancelled ||
+                    destinationStop.arrivalCancelled
+                )
             });
         }
     }
@@ -412,7 +472,8 @@ function findJourneys(
     endStation,
     departureAfterDate,
     arriveBeforeDate,
-    servicesByStation
+    servicesByStation,
+    includeCancelled = false
 ) {
     const journeys = [];
     const windowMs = JOURNEY_CONFIG.SEARCH_WINDOW_HOURS * 3_600_000;
@@ -504,7 +565,8 @@ function findJourneys(
             new Set([
                 startStation,
                 ...path.map(leg => leg.to.code)
-            ])
+            ]),
+            includeCancelled
         );
 
         for (const leg of legs) {
@@ -627,7 +689,18 @@ function dominates(other, journey) {
     );
 }
 
+// Cancelled and running journeys are filtered separately, so a cancelled
+// journey never hides a running one (or the other way around).
 function filterJourneyAlternatives(journeys) {
+    const isCancelled = journey => journey.some(leg => leg.cancelled);
+
+    return [
+        ...filterRunningAlternatives(journeys.filter(j => !isCancelled(j))),
+        ...filterRunningAlternatives(journeys.filter(isCancelled))
+    ];
+}
+
+function filterRunningAlternatives(journeys) {
     const candidates = keepEarliestTransferPoints(journeys);
 
     return candidates.filter(journey =>
@@ -675,22 +748,25 @@ function sortJourneys(journeys, { arriveBefore = false } = {}) {
 // ============================================================
 
 function formatJourneyResult(journey) {
+    const formatStop = stop => ({
+        code: stop.code,
+        name: stop.name,
+        time: formatJourneyTime(stop.time),
+        plannedTime: stop.plannedTime
+            ? formatJourneyTime(stop.plannedTime)
+            : null,
+        delayMinutes: stop.plannedTime
+            ? Math.round((stop.time.getTime() - stop.plannedTime.getTime()) / 60_000)
+            : null
+    });
+
     return journey.map(leg => ({
         trainNumber: leg.trainNumber,
         operator: leg.operator,
         routeNumber: leg.routeNumber,
-
-        from: {
-            code: leg.from.code,
-            name: leg.from.name,
-            time: formatJourneyTime(leg.from.time)
-        },
-
-        to: {
-            code: leg.to.code,
-            name: leg.to.name,
-            time: formatJourneyTime(leg.to.time)
-        }
+        cancelled: leg.cancelled,
+        from: formatStop(leg.from),
+        to: formatStop(leg.to)
     }));
 }
 

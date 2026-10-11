@@ -1238,6 +1238,9 @@ app.get('/entur/journey', checkApiKey, async (req, res) => {
         arriveBefore
     } = req.query;
 
+    const includeCancelled =
+        ['true', '1'].includes(String(req.query.includeCancelled).toLowerCase());
+
     // --------------------------------------------------------
     // Validate stations
     // --------------------------------------------------------
@@ -1333,7 +1336,8 @@ app.get('/entur/journey', checkApiKey, async (req, res) => {
             endStation,
             departureAfterDate,
             arriveBeforeDate,
-            servicesByStation
+            servicesByStation,
+            includeCancelled
         );
 
         // ----------------------------------------------------
