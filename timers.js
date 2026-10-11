@@ -99,6 +99,19 @@ const autoCancelledStops = {
         routes: [],
         trains: [],
         all: true
+    },
+    MAS: {
+        start: DateTime.fromObject(
+            { year: 2026, month: 10, day: 11, hour: 0, minute: 0 },
+            { zone: 'Europe/Oslo' }
+        ),
+        end: DateTime.fromObject(
+            { year: 2026, month: 10, day: 11, hour: 23, minute: 59 },
+            { zone: 'Europe/Oslo' }
+        ),
+        routes: [],
+        trains: [],
+        all: true
     }
 };
 
