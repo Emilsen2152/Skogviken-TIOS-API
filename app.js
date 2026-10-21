@@ -1650,14 +1650,14 @@ app.get('/fido/gsmr', checkApiKey, async (req, res) => {
 app.post('/fido/gsmr', checkApiKey, async (req, res) => {
     const { GSMRNumber, tiosUser, role, location } = req.body;
 
-    // Location is required for all roles except: "driver" and "coss".
+    // Location is required for all roles except: "driver" and "hsv".
     // For conductors, the location must be the name of the train driver they are working with.
 
     if (!GSMRNumber || !tiosUser || !role) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    if (role !== 'driver' && role !== 'coss' && role !== 'driver_trainee' && !location) {
+    if (role !== 'driver' && role !== 'hsv' && role !== 'driver_trainee' && !location) {
         return res.status(400).json({ error: 'Location is required for this role' });
     }
 
@@ -1690,7 +1690,7 @@ app.put('/fido/gsmr/:GSMRNumber', checkApiKey, async (req, res) => {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    if (role !== 'driver' && role !== 'coss' && !location) {
+    if (role !== 'driver' && role !== 'hsv' && !location) {
         return res.status(400).json({ error: 'Location is required for this role' });
     }
 
